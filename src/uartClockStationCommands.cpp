@@ -169,6 +169,21 @@ static const byte WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
 // Ответ: 0x10 ADR CS 0x10 0xFE
 // ADR – адрес ЧС;
 
+int * buildCMD(const byte *CMD){
+    
+}
+
+byte countCheckSumm(const byte *cmd[]){
+  byte cs = 0x55;
+  if (sizeof(cmd)>1){
+    // commandCS[0] = 1; todo
+    for(u8_t i = 1; i < sizeof(cmd); i++){
+      cs^=*cmd[i];
+    }
+  }
+  return cs;
+}
+
 // static const struct command {
 
 
