@@ -1,0 +1,124 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* ssid = "ESP32C3";
+const char* password = "12345678";
+
+WebServer server(80);
+void handleRoot() {
+  String html = R"=====(
+    <!DOCTYPE HTML>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>ESP32 Controller</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body { font-family: Arial, Helvetica, sans-serif; }
+        #content { max-width: 600px; margin: 0 auto; padding: 20px; }
+        #commandSelector { width: 100%; padding: 10px; margin-bottom: 15px; }
+        #sendButton { width: 100%; padding: 10px; margin-bottom: 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        #sendButton:hover { background-color: #45a049; }
+        #response { white-space: pre; font-family: monospace; }
+      </style>
+    </head>
+    <body>
+      <div id="content">
+        <h2>ESP32 Controller</h2>
+        <label for="commandSelector">Command:</label>
+        <select id="commandSelector">
+          <option value="readMainParameters">×òåíèå îñíîâíûõ ïàðàìåòðîâ</option>
+          <option value="readPulseDuration">×òåíèå äëèòåëüíîñòè èìïóëüñà</option>
+          <option value="readChannels">×òåíèå âêëþ÷åííûõ êàíàëîâ</option>
+          <!-- Äîáàâèòü äðóãèå êîìàíäû çäåñü -->
+        </select>
+        <button id="sendButton">Send</button>
+        <pre id="response"></pre>
+      </div>
+      <script>
+        document.getElementById('sendButton').onclick = function() {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '/send?cmd=' + document.getElementById('commandSelector').value, true);
+          xhr.onload = function() {
+            document.getElementById('response').textContent = this.responseText;
+          };
+          xhr.send();
+        };
+      </script>
+    </body>
+    </html>
+  )=====";
+
+  server.send(200, "text/html", html);
+}
+
+void handleSendCommand() {
+  if (server.hasArg("cmd")) {
+    String cmd = server.arg("cmd");
+    String response = sendCommand(cmd);
+    server.send(200, "text/plain", response);
+  } else {
+    server.send(400, "text/plain", "No command received");
+  }
+}
+String transmitCommand(byte cmd[], int cmdLength) {
+  for (int i = 0; i < cmdLength; i++) {
+    Serial1.write(cmd[i]);
+  }
+  Serial1.flush();
+
+  String response = "";
+  uint32_t startTime = millis();
+  while (millis() - startTime < 1000) {
+    if (Serial1.available()) {
+      char c = Serial1.read();
+      response += String(c, HEX) + " ";
+    }
+  }
+
+String sendCommand(const String& cmd) {
+  if (cmd == "readPulseDuration") {
+    byte command[] = {0x10, 0x01, 0x02, 0x56, 0x10, 0xFE}; 
+    return transmitCommand(command, sizeof(command));
+  }
+  // Äîáàâèòü äðóãèå êîìàíäû çäåñü...
+
+  return "Command not recognized";
+}
+
+
+
+ 
+  if (response.startsWith("10")) { 
+    int lenIndex = response.indexOf(" ", 3);  
+    String lengthStr = response.substring(3, lenIndex);
+    int length = strtol(lengthStr.c_str(), nullptr, 16);
+
+   
+    int durationStart = lenIndex + 1;
+    int durationEnd = durationStart + length * 3 - 1; 
+    String durationStr = response.substring(durationStart, durationEnd);
+    int duration = strtol(durationStr.c_str(), nullptr, 16);
+
+    return "Äëèòåëüíîñòü èìïóëüñà: " + String(duration) + " ìñ";
+  }
+
+  return response.length() > 0 ? response : "No response from device";
+}
+
+void setup() {
+  Serial.begin(57600);
+  Serial1.begin(57600, SERIAL_8N1, 1, 0);
+
+  WiFi.softAP(ssid, password);
+
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/send", HTTP_GET, handleSendCommand);
+
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}
+
