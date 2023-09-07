@@ -8,14 +8,14 @@
 
 // Массив начала команды 
 // 0x10 - начало передачи 0x01 - адрес устройства на шине
-static const byte StartCMD[] = {0x10, 0x01}; //start of packet
-static const byte endOfCMD[] = {0x10, 0xFE}; //tail of packet for clock station
+static const unsigned char StartCMD[] = {0x10, 0x01}; //start of packet
+static const unsigned char endOfCMD[] = {0x10, 0xFE, 0x00}; //tail of packet for clock station
 
 
 // КОМАНДА ЧТЕНИЯ ОСНОВНЫХ ПАРАМЕТРОВ
 // Запрос: 0x10 ADR CMD CS 0x10 0xFE (10 01 01 55 10 FE)
 // ADR – адрес ЧС; CMD – 0x01
-static const byte ReadParametrsCMD[] = {0x01};
+static const unsigned char ReadParametrsCMD[] = {0x01};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -50,7 +50,7 @@ static const byte ReadParametrsCMD[] = {0x01};
 // КОМАНДА ЧТЕНИЯ ДЛИТЕЛЬНОСТИ ИМПУЛЬСА В КАНАЛАХ
 // Запрос: 0x10 ADR CMD CS 0x10 0xFE (10 01 02 56 10 FE)
 // ADR – адрес ЧС; CMD – 0x02
-static const byte ReadImpulseCMD[] = {0x02};
+static const unsigned char ReadImpulseCMD[] = {0x02};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -63,7 +63,7 @@ static const byte ReadImpulseCMD[] = {0x02};
 // СИНХРОНИЗАЦИИ ЭЛЕКТРОННЫХ ЧАСОВ
 // Запрос: 0x10 ADR CMD CS 0x10 0xFE (10 01 03 57 10 FE)
 // ADR – адрес ЧС; CMD – 0x03
-static const byte ReadChannelStateCMD[] = {0x03};
+static const unsigned char ReadChannelStateCMD[] = {0x03};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -77,7 +77,7 @@ static const byte ReadChannelStateCMD[] = {0x03};
 // КОМАНДА ЧТЕНИЯ СУТОЧНОЙ КОРРЕКЦИИ И ВРЕМЕНИ КОРРЕКЦИИ
 // Запрос: 0x10 ADR CMD CS 0x10 0xFE (10 01 04 50 10 FE)
 // ADR – адрес ЧС; CMD – 0x04
-static const byte ReadDayCorrectionCMD[] = {0x04};
+static const unsigned char ReadDayCorrectionCMD[] = {0x04};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -91,7 +91,7 @@ static const byte ReadDayCorrectionCMD[] = {0x04};
 // КОМАНДА ЧТЕНИЯ ЧАСОВОГО ПОЯСА
 // Запрос: 0x10 ADR CMD CS 0x10 0xFE (10 01 05 51 10 FE)
 // ADR – адрес ЧС; CMD – 0x05
-static const byte ReadTimeZoneCMD[] = {0x05};
+static const unsigned char ReadTimeZoneCMD[] = {0x05};
 
 // CS = 0x55^ADR^CMD.
 // Ответ: 0x10 ADR
@@ -103,7 +103,7 @@ static const byte ReadTimeZoneCMD[] = {0x05};
 // КОМАНДА ЗАПИСИ ВРЕМЕНИ В КАНАЛАХ
 // Запись: 0x10 ADR CMD – 0х06
 // CMD Channel Hour Minute
-static const byte WriteTimeInChannelCMD[] = {0x06,0x01,0x00,0x00};
+static const unsigned char WriteTimeInChannelCMD[] = {0x06,0x01,0x00,0x00};
 
 // 1. Один байт номера канала. Значения от 1 до 4.
 // 2. Два байта времени в канале. Первый байт – часы (от 0 до 11), второй байт – минуты (от 0
@@ -116,7 +116,7 @@ static const byte WriteTimeInChannelCMD[] = {0x06,0x01,0x00,0x00};
 
 // КОМАНДА ЗАПИСИ ДЛИТЕЛЬНОСТИ ИМПУЛЬСА В КАНАЛАХ
 // Запись: 0x10 ADR CMD – 0х07
-static const byte WriteImpulseDurationInChannelCMD[] = {0x07,0x30};
+static const unsigned char WriteImpulseDurationInChannelCMD[] = {0x07,0x30};
 
 // 1. Один байт длительности импульса. Число в десятых долях секунды. Предельные
 // значения от 2 до 240, что соответствует длительности импульса от 0,2 до 24,0 секунды.
@@ -129,7 +129,7 @@ static const byte WriteImpulseDurationInChannelCMD[] = {0x07,0x30};
 // КОМАНДА ЗАПИСИ ВКЛЮЧЕННЫХ КАНАЛОВ ДЛЯ ВЫДАЧИ ИМПУЛЬСА ВТОРИЧНЫХ ЧАСОВ И
 // СИНХРОНИЗАЦИИ ЭЛЕКТРОННЫХ ЧАСОВ
 // Запись: 0x10 ADR CMD – 0х08
-static const byte WriteEnableChannelCMD[] = {0x08,0x00};
+static const unsigned char WriteEnableChannelCMD[] = {0x08,0x00};
 
 // 1. Один байт с флагами. Младшие четыре бита отражают какой канал включен для выдачи
 // импульсов вторичных часов (самый младший бит – канал 1, самый старший – канал 4).
@@ -143,7 +143,7 @@ static const byte WriteEnableChannelCMD[] = {0x08,0x00};
 
 // КОМАНДА ЗАПИСИ ВРЕМЕНИ СУТОК ПЕРВИЧНЫХ ЧАСОВ
 // Запись: 0x10 ADR CMD – 0х09
-static const byte WriteDateTimeCMD[] = {0x09,0x12,0x00,0x00,0x07,0x01,0x09,0x22};
+static const unsigned char WriteDateTimeCMD[] = {0x09,0x12,0x00,0x00,0x07,0x01,0x09,0x22};
 
 // 1. Семь байт текущего времени и даты первичных часов ЧС. Байты идут по порядку часы,
 // минуты, секунды, день недели (от 1 - понедельник до 7 - воскресенье), число, месяц, год
@@ -156,7 +156,7 @@ static const byte WriteDateTimeCMD[] = {0x09,0x12,0x00,0x00,0x07,0x01,0x09,0x22}
 
 // КОМАНДА ЗАПИСИ СУТОЧНОЙ КОРРЕКЦИИ И ВРЕМЕНИ КОРРЕКЦИИ
 // Запись: 0x10 ADR CMD – 0х0A
-static const byte WriteDayCorrectionCMD[] = {0x0A,0x00,0x03};
+static const unsigned char WriteDayCorrectionCMD[] = {0x0A,0x00,0x03};
 
 // 1. Один байт суточной коррекции. Значение в секундах. Максимальное значение 99
 // секунд. Если коррекция отрицательная, то старший бит установлен.
@@ -170,7 +170,7 @@ static const byte WriteDayCorrectionCMD[] = {0x0A,0x00,0x03};
 
 // КОМАНДА ЗАПИСИ ЧАСОВОГО ПОЯСА И РАЗРЕШЕНИЯ ПЕРЕХОДА ЗИМА/ЛЕТО
 // Запись: 0x10 ADR CMD – 0х0B
-static const byte WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
+static const unsigned char WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
 
 // 1. Один байт часового пояса. Значение в часах от 0 до 12. Если это значение
 // отрицательное, то старший бит установлен.
@@ -180,5 +180,14 @@ static const byte WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
 // Ответ: 0x10 ADR CS 0x10 0xFE
 // ADR – адрес ЧС;
 
+
+//Функция подсчёта конечной длины команды с учётом удвоения 0x10
+uint8_t calculateLenOfCommand(const unsigned char * cmd, const uint8_t cmdLen);
+
+uint8_t startCMDLen;
+uint8_t endOfCMDLen;
+
+//Фунция сборки полной комманды с подсчётом контрольной суммы
+unsigned char * buildCMD(const unsigned char *startOfCommand = StartCMD, uint8_t sclen = startCMDLen, const unsigned char *cmd = ReadParametrsCMD, uint8_t cmdLen = 1, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
 
 #endif
