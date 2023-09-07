@@ -7,7 +7,7 @@ static const unsigned char endOfCMD[] = {0x10, 0xFE}; //tail of packet for clock
 static const unsigned char ReadParametrsCMD[] = {0x01};//could be 
 static const unsigned char StartCMDLen = sizeof(StartCMD)/sizeof(StartCMD[0]);
 static const unsigned char endOfCMDLen = sizeof(endOfCMD)/sizeof(endOfCMD[0]);
-static const unsigned char ReadParametrsCMDLen = sizeof(ReadParametrsCMD)/sizeof(ReadParametrsCMD);
+static const unsigned char ReadParametrsCMDLen = sizeof(ReadParametrsCMD)/sizeof(ReadParametrsCMD[0]);
 
 
 unsigned char * buildCMD(const unsigned char *startC = StartCMD, unsigned char sclen = StartCMDLen, const unsigned char *cmd = ReadParametrsCMD, unsigned char cmdLen = ReadParametrsCMDLen, const unsigned char *endC = endOfCMD, unsigned char endCL = endOfCMDLen){
