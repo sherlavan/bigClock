@@ -27,8 +27,8 @@ unsigned char * buildCMD(const unsigned char *startOfCommand = StartCMD, uint8_t
         fullcmd[i+j] = cmd[j];
         controlSumm^=cmd[j];
         if(cmd[j]==0x10){   //0x10 - spec, to send it, it must be duplicate
-            j++;
-            fullcmd[i+j] = cmd[j-1];
+            i++;
+            fullcmd[i+j] = 0x10;
         }
         
     }
@@ -39,6 +39,7 @@ unsigned char * buildCMD(const unsigned char *startOfCommand = StartCMD, uint8_t
         fullcmd[i+j+1+k] = endC[k];
         
     }
+    
     
     
  return fullcmd;   

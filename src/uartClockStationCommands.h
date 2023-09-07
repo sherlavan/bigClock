@@ -181,13 +181,29 @@ static const unsigned char WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
 // ADR – адрес ЧС;
 
 
-//Функция подсчёта конечной длины команды с учётом удвоения 0x10
+//Функция подсчёта конечной длины команды с учётом удвоения 0x10 и контрольной суммы
+// @param cmd указатель на мвссив байт команды
+// @param cmdLen длина массива
 uint8_t calculateLenOfCommand(const unsigned char * cmd, const uint8_t cmdLen);
 
+
+//длина начала команды
 uint8_t startCMDLen;
+
+
+//длина окончания команды
 uint8_t endOfCMDLen;
 
 //Фунция сборки полной комманды с подсчётом контрольной суммы
+// @param startOfCommand указатель на массив байт с началом команды
+// @param sclen длина массива начала команды
+// @param cmd указатель на массив байт команды
+// @param cmdLen длина массива байт команды, для подсчёта использовать calculateLenOfCommand()
+// @param endC указатель на массив байт окончания команды
+// @param endCL длина массива окончания команды
 unsigned char * buildCMD(const unsigned char *startOfCommand = StartCMD, uint8_t sclen = startCMDLen, const unsigned char *cmd = ReadParametrsCMD, uint8_t cmdLen = 1, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
+
+
+// @todo функция switch casе выбора команды
 
 #endif
