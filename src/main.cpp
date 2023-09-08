@@ -69,9 +69,10 @@ void setup() {
   pinMode(BLUE_LED, OUTPUT);
   Serial.begin(115200); // 
   Serial1.setRxBufferSize(130);// must be > 128 f.e. 129
-  Serial1.begin(57600, SERIAL_8N1, 0, 1); // uart1 with clock station
+  Serial1.begin(57600, SERIAL_8N1, 1, 0); // uart1 with clock station
   // static byte commandCS[20]; // store computed command with check summ and end of packet
-  int a = 0;
+
+  
   
 }
 
@@ -79,6 +80,7 @@ void setup() {
 
 
 void loop() {
+  unsigned char * name_arr = (unsigned char *) malloc(10);
   
   Serial.print("program start\r\n");
   // init();
@@ -97,28 +99,24 @@ void loop() {
   }
   Serial.println();
 
-  unsigned char name_arr[130]={255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255};
+  
   unsigned char *bytecmd;
   bytecmd = 0;
   Serial1.write(command, sizeof(command));
-  while(!Serial1.available()){
-    Serial.println("serial1 ne dostupen");
-    Serial.println(Serial1.available());
-    delay(100);
-  }
-  while (!*bytecmd)  {
-    Serial1.readBytes(bytecmd,1);
-    Serial.println(*bytecmd);
-    Serial.println("noli?");
-  }
-  Serial.println(*bytecmd);
+  delay(1000);
   
-  Serial1.readBytesUntil(0xFE,name_arr,sizeof(name_arr)-1);
-      
-      
 
-    
+  if(Serial1.available())  {
+    Serial.println(Serial1.available());
+    free(name_arr);
+    unsigned char * name_arr = (unsigned char *) malloc(Serial1.available());
+    Serial1.readBytesUntil(0xFE,name_arr,sizeof(name_arr)-1);
+
+  }
+  // Serial.println(*bytecmd);
   
+  // Serial1.readBytesUntil(0xFE,name_arr,sizeof(name_arr)-1);
+      
 
   free(command);
 
@@ -128,6 +126,8 @@ void loop() {
     Serial.print(" ");
     }
   Serial.println("end Rx");
+
+  free(name_arr);
   // byte command[] = {0x10, 0x01, 0x02, 0x56, 0x10, 0xFE};
   // byte command1[] = {0x10, 0x01, 0x09, 0x13, 0x50, 0x00, 0x06, 0x02, 0x09, 0x23,0x31,0x10,0xFE};
   // byte command2[] = {0x10, 0x01, 0x05, 0x51, 0x10, 0xFE};
@@ -144,6 +144,7 @@ void loop() {
   
 
   Serial.print(" End \r\n");
+  delay(10000);
 
  
   digitalWrite(BLUE_LED, 1);
@@ -153,8 +154,9 @@ void loop() {
   digitalWrite(BLUE_LED, 0);
   digitalWrite(GREEN_LED, 0);
   digitalWrite(RED_LED, 0);
-  delay(5000);
+  
 
   // a++;
 
 }
+
