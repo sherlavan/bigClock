@@ -13,10 +13,13 @@ uint8_t calculateLenOfCommand(const unsigned char * cmd, const uint8_t cmdLen){
 
 
 //Сборка полной команды для часовой станции, после отправки выполнить free(*fullCMD)
-unsigned char * buildCMD(const unsigned char *startOfCommand = StartCMD, uint8_t sclen = startCMDLen, const unsigned char *cmd = ReadParametrsCMD, uint8_t cmdLen = 1, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen){
-    unsigned char * fullcmd = (unsigned char *) malloc(sclen + cmdLen + endCL + 1);//1 - Байт
+unsigned char * buildCMD(const unsigned char *cmd, uint8_t cmdLen, const unsigned char *startOfCommand, uint8_t sclen, const unsigned char *endC, uint8_t endCL){
+    
+    unsigned char * fullcmd = (unsigned char *) malloc(sclen + cmdLen + endCL + 1);//1 - Байт для контрольной суммы
     unsigned char controlSumm = 0x55;
+    
     controlSumm^=startOfCommand[1];
+    
     uint8_t i = 0;
     for (; i<sclen; i++){
         fullcmd[i] = startOfCommand[i];

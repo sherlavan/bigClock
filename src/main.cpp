@@ -1,11 +1,12 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 // #include "esp_system.h"
 // #include "esp_log.h"
 // #include "driver/uart.h"
-#include "string.h"
+// #include "string.h"
 // #include "driver/gpio.h"
-#include <inttypes.h>
+// #include <inttypes.h>
 #include <HardwareSerial.h>
+#include "uartClockStationCommands.h"
 
 // static const int RX_BUF_SIZE = 1024;
 
@@ -69,19 +70,9 @@ void setup() {
   Serial.begin(115200); // 
   Serial1.setRxBufferSize(130);// must be > 128 f.e. 129
   Serial1.begin(57600, SERIAL_8N1, 0, 1); // uart1 with clock station
-  static byte commandCS[20]; // store computed command with check summ and end of packet
+  // static byte commandCS[20]; // store computed command with check summ and end of packet
+  int a = 0;
   
-}
-
-byte countCheckSumm(const byte *cmd[]){
-  byte cs = 0x55;
-  if (sizeof(cmd)>1){
-    // commandCS[0] = 1; todo
-    for(u8_t i = 1; i < sizeof(cmd); i++){
-      cs^=*cmd[i];
-    }
-  }
-  return cs;
 }
 
 
@@ -93,39 +84,64 @@ void loop() {
   // init();
 
   // byte command[] = {0x10, 0x01, 0x02};
+  const unsigned char * cm = WriteDateTimeCMD;
 
-  
-  byte command[] = {0x10, 0x01, 0x02, 0x56, 0x10, 0xFE};
-  byte command1[] = {0x10, 0x01, 0x09, 0x13, 0x50, 0x00, 0x06, 0x02, 0x09, 0x23,0x31,0x10,0xFE};
-  byte command2[] = {0x10, 0x01, 0x05, 0x51, 0x10, 0xFE};
-//ЧТЕНИЯ ДЛИТЕЛЬНОСТИ ИМПУЛЬСА В КАНАЛАХ
-//   Запрос: 0x10 ADR CMD CS 0x10 0xFE (10 01 02 56 10 FE)
-// ADR – адрес ЧС; CMD – 0x02
-// CS = 0x55^ADR^CMD
-// Ответ: 0x10 ADR
-// 1. Один байт длительности импульса. Число в десятых долях секунды. Предельные
-// значения от 2 до 240, что соответствует длительности импульса от 0,2 до 24,0 секунды.
-// CS 0x10 0xFE.
-//
-  char name_arr[21];
-
-  Serial1.write(command1, sizeof(command1));
-  if(Serial1.available()){
-    Serial1.readBytesUntil(0xFE,name_arr,sizeof(name_arr)-1);
-  }
+  uint8_t commandLen = calculateLenOfCommand(cm,sizeof(cm));
+  unsigned char *  command = buildCMD(cm, commandLen);
+  commandLen += startCMDLen + endOfCMDLen;
 
   Serial.print(" Data send ");
-  for (u8_t i = 0; i<sizeof(command1);i++){
-    Serial.print(command1[i],HEX);
-    Serial.print(",");
+  for(uint8_t i=0;i<commandLen;i++){
+    Serial.print(command[i],HEX);
+    Serial.print(" ");
   }
-  Serial.print("\r\n");
+  Serial.println();
+
+  unsigned char name_arr[130]={255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255};
+  unsigned char *bytecmd;
+  bytecmd = 0;
+  Serial1.write(command, sizeof(command));
+  while(!Serial1.available()){
+    Serial.println("serial1 ne dostupen");
+    Serial.println(Serial1.available());
+    delay(100);
+  }
+  while (!*bytecmd)  {
+    Serial1.readBytes(bytecmd,1);
+    Serial.println(*bytecmd);
+    Serial.println("noli?");
+  }
+  Serial.println(*bytecmd);
+  
+  Serial1.readBytesUntil(0xFE,name_arr,sizeof(name_arr)-1);
+      
+      
+
+    
+  
+
+  free(command);
 
   Serial.print("Recive response : ");
   for(u8_t i = 0; i<sizeof(name_arr); i++){
     Serial.print(name_arr[i],HEX);
-    Serial.print(",");
+    Serial.print(" ");
     }
+  Serial.println("end Rx");
+  // byte command[] = {0x10, 0x01, 0x02, 0x56, 0x10, 0xFE};
+  // byte command1[] = {0x10, 0x01, 0x09, 0x13, 0x50, 0x00, 0x06, 0x02, 0x09, 0x23,0x31,0x10,0xFE};
+  // byte command2[] = {0x10, 0x01, 0x05, 0x51, 0x10, 0xFE};
+
+
+
+  // Serial.print(" Data send ");
+  // for (u8_t i = 0; i<sizeof(command1);i++){
+  //   Serial.print(command1[i],HEX);
+  //   Serial.print(",");
+  // }
+  // Serial.print("\r\n");
+
+  
 
   Serial.print(" End \r\n");
 
@@ -137,7 +153,8 @@ void loop() {
   digitalWrite(BLUE_LED, 0);
   digitalWrite(GREEN_LED, 0);
   digitalWrite(RED_LED, 0);
-  delay(1000);
+  delay(5000);
 
+  // a++;
 
 }
