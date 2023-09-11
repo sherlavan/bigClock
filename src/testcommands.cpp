@@ -74,9 +74,9 @@ int main()
     }
     cout<<endl;
     cout<<sizeof(WriteDateTimeCMD)<<" "<<sizeof(WriteDateTimeCMD[0])<<endl;
-    uint8_t l = calculateLenOfCommand(WriteDateTimeCMD,sizeof(WriteDateTimeCMD)/sizeof(WriteDateTimeCMD[0]));
+    // uint8_t l = calculateLenOfCommand(WriteDateTimeCMD,sizeof(WriteDateTimeCMD)/sizeof(WriteDateTimeCMD[0]));
     
-    cout<<(int)l<<endl;
+    // cout<<(int)l<<endl;
     
 
     return 0;

@@ -5,10 +5,20 @@
 #include "string.h"
 // using namespace std;
 
+//Команды имеют формат {длина команды; CMD; Дина ответа без начала, конца и контрольной суммы (5)}
+//т.е. ответ 0 - 10 01 55 10 FE
+
 // Массив начала команды 
 // 0x10 - начало передачи 0x01 - адрес устройства на шине
 static const unsigned char StartCMD[] = {0x10, 0x01}; //start of packet
-static const unsigned char endOfCMD[] = {0x10, 0xFE, 0x00}; //tail of packet for clock station
+static const unsigned char endOfCMD[] = {0x10, 0xFE}; //tail of packet for clock station
+
+//длина начала команды
+const uint8_t startCMDLen = 2;
+
+
+//длина окончания команды
+const uint8_t endOfCMDLen = 3;
 
 
 // КОМАНДА ЧТЕНИЯ ОСНОВНЫХ ПАРАМЕТРОВ
@@ -39,7 +49,7 @@ static const unsigned char endOfCMD[] = {0x10, 0xFE, 0x00}; //tail of packet for
 // Если байт равен нулю, то автоматический переход отключен. Если байт равен 1, то был
 // осуществлён переход на летнее время. Если байт равен 2, то был осуществлён переход
 // на зимнее время.
-static const unsigned char ReadParametrsCMD[] = {0x01};
+static const unsigned char ReadParametrsCMD[] = {1, 0x01, 26};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -52,7 +62,8 @@ static const unsigned char ReadParametrsCMD[] = {0x01};
 // ADR – адрес ЧС; CMD – 0x02
 // 1. Один байт длительности импульса. Число в десятых долях секунды. Предельные
 // значения от 2 до 240, что соответствует длительности импульса от 0,2 до 24,0 секунды.
-static const unsigned char ReadImpulseCMD[] = {0x02};
+// @todo уточнить колиество каналов 4?
+static const unsigned char ReadImpulseCMD[] = {1, 0x02, 4};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -68,7 +79,7 @@ static const unsigned char ReadImpulseCMD[] = {0x02};
 // импульсов вторичных часов (самый младший бит – канал 1, самый старший – канал 4).
 // Старшие четыре бита отражают какой канал включен для синхронизации электронных
 // часов. При нулевом значении канал выключен.
-static const unsigned char ReadChannelStateCMD[] = {0x03};
+static const unsigned char ReadChannelStateCMD[] = {1, 0x03, 1};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
@@ -84,7 +95,7 @@ static const unsigned char ReadChannelStateCMD[] = {0x03};
 // секунд. Если коррекция отрицательная, то старший бит установлен.
 // 2. Один байт значения часа суток в которое происходит коррекция. Коррекция происходит
 // один раз в сутки в ХХ:30. ХХ имеет двоично-десятичное значение от 0х00 до 0х23.
-static const unsigned char ReadDayCorrectionCMD[] = {0x04};
+static const unsigned char ReadDayCorrectionCMD[] = {1, 0x04, 2};
 
 // CS = 0x55^ADR^CMD
 
@@ -96,7 +107,7 @@ static const unsigned char ReadDayCorrectionCMD[] = {0x04};
 // ADR – адрес ЧС; CMD – 0x05
 // 1. Один байт часового пояса. Значение в часах от 0 до 12. Если это значение
 // отрицательное, то старший бит установлен.
-static const unsigned char ReadTimeZoneCMD[] = {0x05};
+static const unsigned char ReadTimeZoneCMD[] = {1, 0x05, 1};
 
 // CS = 0x55^ADR^CMD.
 // Ответ: 0x10 ADR
@@ -110,7 +121,7 @@ static const unsigned char ReadTimeZoneCMD[] = {0x05};
 // 1. Один байт номера канала. Значения от 1 до 4.
 // 2. Два байта времени в канале. Первый байт – часы (от 0 до 11), второй байт – минуты (от 0
 // до 59).
-static const unsigned char WriteTimeInChannelCMD[] = {0x06,0x01,0x00,0x00};
+static const unsigned char WriteTimeInChannelCMD[] = {4, 0x06, 0};
 
 
 // CS 0x10 0xFE.
@@ -123,7 +134,7 @@ static const unsigned char WriteTimeInChannelCMD[] = {0x06,0x01,0x00,0x00};
 // Запись: 0x10 ADR CMD – 0х07
 // 1. Один байт длительности импульса. Число в десятых долях секунды. Предельные
 // значения от 2 до 240, что соответствует длительности импульса от 0,2 до 24,0 секунды.
-static const unsigned char WriteImpulseDurationInChannelCMD[] = {0x07,0x30};
+static const unsigned char WriteImpulseDurationInChannelCMD[] = {2, 0x07, 0};
 
 
 // CS 0x10 0xFE.
@@ -139,7 +150,7 @@ static const unsigned char WriteImpulseDurationInChannelCMD[] = {0x07,0x30};
 // импульсов вторичных часов (самый младший бит – канал 1, самый старший – канал 4).
 // Старшие четыре бита отражают какой канал включен для синхронизации электронных
 // часов. При нулевом значении канал выключен.
-static const unsigned char WriteEnableChannelCMD[] = {0x08,0x00};
+static const unsigned char WriteEnableChannelCMD[] = {2, 0x08, 0};
 
 
 // CS 0x10 0xFE.
@@ -153,11 +164,12 @@ static const unsigned char WriteEnableChannelCMD[] = {0x08,0x00};
 // 1. Семь байт текущего времени и даты первичных часов ЧС. Байты идут по порядку часы,
 // минуты, секунды, день недели (от 1 - понедельник до 7 - воскресенье), число, месяц, год
 // (последние две цифры). Все значения в BCD формате.
-static const unsigned char WriteDateTimeCMD[] = {0x09,0x12,0x00,0x00,0x07,0x01,0x09,0x22};
+static const unsigned char WriteDateTimeCMD[] = {8, 0x09, 0};
 
 
 // CS 0x10 0xFE.
 // Ответ: 0x10 ADR CS 0x10 0xFE
+// {0x10, 0x01, 0x55, 0x10 0xFE}
 // ADR – адрес ЧС;
 // CS = 0x55^ADR.
 
@@ -168,7 +180,7 @@ static const unsigned char WriteDateTimeCMD[] = {0x09,0x12,0x00,0x00,0x07,0x01,0
 // секунд. Если коррекция отрицательная, то старший бит установлен.
 // 2. Один байт значения часа суток в которое происходит коррекция. Коррекция происходит
 // один раз в сутки в ХХ:30. ХХ имеет двоично-десятичное значение от 0х00 до 0х23.
-static const unsigned char WriteDayCorrectionCMD[] = {0x0A,0x00,0x03};
+static const unsigned char WriteDayCorrectionCMD[] = {3, 0x0A, 0};
 
 
 // CS 0x10 0xFE.
@@ -183,7 +195,7 @@ static const unsigned char WriteDayCorrectionCMD[] = {0x0A,0x00,0x03};
 // отрицательное, то старший бит установлен.
 // 2. Один байт. Если 0, то автоматический переход зима/лето выключен, если не 0 –
 // включен.
-static const unsigned char WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
+static const unsigned char WriteTimeZoneCMD[] = {3, 0x0B, 0};
 
 
 // CS 0x10 0xFE.
@@ -194,24 +206,21 @@ static const unsigned char WriteTimeZoneCMD[] = {0x0B,0x03,0x00};
 //Функция подсчёта конечной длины команды с учётом удвоения 0x10 и контрольной суммы
 // @param cmd указатель на мвссив байт команды
 // @param cmdLen длина массива
-uint8_t calculateLenOfCommand(const unsigned char * cmd, const uint8_t cmdLen);
+uint8_t calculateLenOfParams(const unsigned char * params, const uint8_t cmdLen);
+
+static unsigned char ParametrsCMD[10]={0};
 
 
-//длина начала команды
-const uint8_t startCMDLen = 2;
 
-
-//длина окончания команды
-const uint8_t endOfCMDLen = 3;
 
 //Фунция сборки полной комманды с подсчётом контрольной суммы
 // @param startOfCommand указатель на массив байт с началом команды
-// @param sclen длина массива начала команды
+// длина массива startOfCommand передаётся первым элементом
 // @param cmd указатель на массив байт команды
 // @param cmdLen длина массива байт команды, для подсчёта использовать calculateLenOfCommand()
 // @param endC указатель на массив байт окончания команды
 // @param endCL длина массива окончания команды
-unsigned char * buildCMD(const unsigned char *cmd = ReadParametrsCMD, uint8_t cmdLen = 1, const unsigned char *startOfCommand = StartCMD, uint8_t sclen = startCMDLen, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
+unsigned char * buildCMD(const unsigned char *cmd = ReadParametrsCMD, unsigned char *parametrs = ParametrsCMD, const unsigned char *startOfCommand = StartCMD, uint8_t sclen = startCMDLen, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
 
 
 // @todo функция switch casе выбора команды
