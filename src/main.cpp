@@ -11,8 +11,8 @@
 // static const int RX_BUF_SIZE = 1024;
 
 //! For ESP32 c3 13 UART0 RXPIN = 20, TXPIN = 21
-#define TXD_PIN (GPIO_NUM_1)
-#define RXD_PIN (GPIO_NUM_0)
+#define TXD_PIN (GPIO_NUM_5)
+#define RXD_PIN (GPIO_NUM_4)
 // #define UART (UART_NUM_1)
 // Led pins
 #define WHITE_LED (GPIO_NUM_19)
@@ -67,9 +67,14 @@ void setup() {
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
   pinMode(BLUE_LED, OUTPUT);
+  digitalWrite(BLUE_LED,0);
+  digitalWrite(GREEN_LED, 0);
+  digitalWrite(RED_LED, 0);
+  digitalWrite(WHITE_LED,0);
+  digitalWrite(ORANGE_LED, 0);
   Serial.begin(115200); // 
   Serial1.setRxBufferSize(130);// must be > 128 f.e. 129
-  Serial1.begin(57600, SERIAL_8N1, 4, 5); // uart1 with clock station
+  Serial1.begin(57600, SERIAL_8N1, RXD_PIN, TXD_PIN); // uart1 with clock station
   // static byte commandCS[20]; // store computed command with check summ and end of packet
   
   
@@ -80,11 +85,11 @@ void setup() {
 
 
 void loop() {
-  unsigned char * name_arr = (unsigned char *) malloc(10);
+  // unsigned char * answer = (unsigned char *) malloc(10);
   
   Serial.print("program start\r\n");
 
-  unsigned char *  command = buildCMD(ReadImpulseCMD,ParametrsCMD);
+  unsigned char *  command = buildCMD(ReadParametrsCMD, ParametrsCMD);
 
   uint8_t commandLen = command[0];
   uint8_t answerLen = command[commandLen-1];
@@ -103,36 +108,66 @@ void loop() {
   }
   Serial.println();
 
+  unsigned char * commandToSend = (unsigned char *) malloc(commandLen - 2);
+  for (uint8_t i = 0; i<commandLen - 2; i++){
+    commandToSend[i]=command[i+1];
+    Serial.print(commandToSend[i],HEX);
+    Serial.print(" ");
+
+  }
+  Serial.println();
+
+
+  free(commandToSend);
+
   
   // unsigned char *bytecmd;
   // bytecmd = 0;
-  // Serial1.write(command, sizeof(command));
+  Serial1.write(commandToSend, commandLen - 2);
   // delay(1000);
   
+  unsigned char * answer = (unsigned char *) malloc(answerLen + 1);
+  for (u8_t i = 0;i<answerLen;i++){
+    answer[i]=0;
+  }
+  while (Serial1.available()<answerLen)
+  {
+    delay(10);
+  }
+  
+  if(Serial1.available()>=answerLen)  {
+    // sizeOfAnsver = Serial1.available();
+    // Serial.println(sizeOfAnsver);
+    // free answer);
+    
+    Serial1.readBytesUntil(0xfe, answer, answerLen);
 
-  // if(Serial1.available())  {
-  //   sizeOfAnsver = Serial1.available();
-  //   Serial.println(sizeOfAnsver);
-  //   free(name_arr);
-  //   unsigned char * name_arr = (unsigned char *) malloc(sizeOfAnsver + 1);
-  //   Serial1.readBytes(name_arr,sizeOfAnsver);
+  }
 
-  // }
+  Serial.print("Recive response : ");
+    for(u8_t i = 0; i<answerLen; i++){
+      Serial.print(answer[i], HEX);
+      Serial.print(" ");
+      }
+    Serial.println("end Rx");
+
+    free (answer);
+
   // // Serial.println(*bytecmd);
   
-  // // Serial1.readBytesUntil(0xFE,name_arr,sizeof(name_arr)-1);
+  // // Serial1.readBytesUntil(0xFE answer,sizeof answer)-1);
       
   // if(sizeOfAnsver > 4){
   //   free(command);
     
   //   Serial.print("Recive response : ");
   //   for(u8_t i = 0; i<sizeOfAnsver; i++){
-  //     Serial.print(name_arr[i],HEX);
+  //     Serial.print answer[i],HEX);
   //     Serial.print(" ");
   //     }
   //   Serial.println("end Rx");
 
-  //   free(name_arr);
+  //   free answer);
   // }
   // byte command[] = {0x10, 0x01, 0x02, 0x56, 0x10, 0xFE};
   // byte command1[] = {0x10, 0x01, 0x09, 0x13, 0x50, 0x00, 0x06, 0x02, 0x09, 0x23,0x31,0x10,0xFE};
@@ -153,10 +188,10 @@ void loop() {
   delay(5000);
 
  
-  digitalWrite(BLUE_LED, 0);
-  digitalWrite(GREEN_LED, 0);
-  digitalWrite(RED_LED, 1);
-  delay(500);
+  // digitalWrite(BLUE_LED, 0);
+  // digitalWrite(GREEN_LED, 0);
+  // digitalWrite(RED_LED, 1);
+  // delay(500);
   digitalWrite(BLUE_LED,0);
   digitalWrite(GREEN_LED, 0);
   digitalWrite(RED_LED, 0);

@@ -18,7 +18,7 @@ const uint8_t startCMDLen = 2;
 
 
 //длина окончания команды
-const uint8_t endOfCMDLen = 3;
+const uint8_t endOfCMDLen = 2;
 
 
 // КОМАНДА ЧТЕНИЯ ОСНОВНЫХ ПАРАМЕТРОВ
@@ -63,7 +63,7 @@ static const unsigned char ReadParametrsCMD[] = {1, 0x01, 26};
 // 1. Один байт длительности импульса. Число в десятых долях секунды. Предельные
 // значения от 2 до 240, что соответствует длительности импульса от 0,2 до 24,0 секунды.
 // @todo уточнить колиество каналов 4?
-static const unsigned char ReadImpulseCMD[] = {1, 0x02, 4};
+static const unsigned char ReadImpulseCMD[] = {1, 0x02, 5};
 
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR
