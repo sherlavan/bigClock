@@ -1,5 +1,5 @@
-//  Author: sherlava@gmail.com
-//
+//  @Author: sherlava@gmail.com
+// 
 #ifndef __CHSBKGPSM4K__
 #define __CHSBKGPSM4K__
 
