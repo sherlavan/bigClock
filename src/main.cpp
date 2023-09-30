@@ -15,6 +15,13 @@
 #define TXD_PIN_ClockStation (GPIO_NUM_22)//(GPIO_NUM_5) esp32c3
 #define RXD_PIN_ClockStation (GPIO_NUM_23)//(GPIO_NUM_4) esp32c3
 
+#define RXD_PIN_ClockMeh (GPIO_NUM_35)
+#define TXD_PIN_ClockMeh (GPIO_NUM_34)
+#define RS485_PIN (GPIO_NUM_22)
+
+#define CSSerial Serial1
+#define CMSerial Serial2
+
 BluetoothSerial SBT;
 
 
@@ -58,10 +65,14 @@ BluetoothSerial SBT;
 static uint8_t sizeOfAnsver = 0;
 void setup() {
   // put your setup code here, to run once:
+  pinMode(RS485_PIN,OUTPUT);
+  digitalWrite(RS485_PIN,LOW);
 
   Serial.begin(115200); // 
-  Serial1.setRxBufferSize(255);// must be > 128 f.e. 129
-  Serial1.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
+  CSSerial.setRxBufferSize(255);// must be > 128 f.e. 129
+  CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
+  CMSerial.setRxBufferSize(255);
+  CMSerial.begin(9600, SERIAL_8N1);
   SBT.begin("ClockStation");
   
 }
@@ -108,7 +119,7 @@ void loop() {
   
   // unsigned char *bytecmd;
   // bytecmd = 0;
-  Serial1.write(commandToSend, commandLen - 2);
+  CSSerial.write(commandToSend, commandLen - 2);
   unsigned long responseTime = millis();
 
   free(commandToSend);
@@ -119,17 +130,17 @@ void loop() {
     answer[i]=0;
   }
 // @todo read string from bufer len = 255?
-  while (Serial1.available()<answerLen)
+  while (CSSerial.available()<answerLen)
   {
     delay(1);
   }
   
-  if(Serial1.available()>=answerLen)  {
+  if(CSSerial.available()>=answerLen)  {
     // sizeOfAnsver = Serial1.available();
     // Serial.println(sizeOfAnsver);
     // free answer);
     SBT.print("Response time : ");
-    Serial1.readBytesUntil(0xfe, answer, answerLen + 1);
+    CSSerial.readBytesUntil(0xfe, answer, answerLen + 1);
     SBT.println(millis() - responseTime);
 
   }
@@ -139,11 +150,36 @@ void loop() {
       SBT.print(answer[i], HEX);
       SBT.print(" ");
       }
-    SBT.println("end Rx");
+  SBT.println("end Rx");
 
-    free (answer);
+  free (answer);
 
-      SBT.print(" End \r\n");
+  SBT.println(" vvv CM vvv");
+
+  static const unsigned char mehParams [] = {0x10, 0x02, 0x50, 0x07, 0x10, 0xFE};
+
+  digitalWrite(RS485_PIN,HIGH);//enable 485 transmition
+  CMSerial.write(mehParams,6);
+  digitalWrite(RS485_PIN,LOW);//enable 485 recive
+  delay(5);
+  unsigned char * cmanswer = (unsigned char *) malloc(11);
+  for (uint8_t i = 0;i<11;i++){
+    cmanswer[i]=0;
+  }
+  while (CMSerial.available()<10)
+  {
+    delay(1);
+  }
+  if(CMSerial.available()>0){
+    CMSerial.readBytes(cmanswer,10);
+  }
+  for(uint8_t i = 0; i<11; i++){
+    SBT.print(cmanswer[i],HEX);
+
+  }
+  SBT.println("");
+  SBT.println(" ^^^ CM ^^^");
+  free(cmanswer);
   delay(5000);
 
   // // Serial.println(*bytecmd);
