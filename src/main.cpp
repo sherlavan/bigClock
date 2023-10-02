@@ -8,19 +8,8 @@
 #include <HardwareSerial.h>
 #include "uartClockStationCommands.h"
 #include "BluetoothSerial.h"
+#include "config.h"
 
-// static const int RX_BUF_SIZE = 1024;
-
-//! For ESP32 c3 13 UART0 RXPIN = 20, TXPIN = 21
-#define TXD_PIN_ClockStation (GPIO_NUM_22)//(GPIO_NUM_5) esp32c3
-#define RXD_PIN_ClockStation (GPIO_NUM_23)//(GPIO_NUM_4) esp32c3
-
-#define RXD_PIN_ClockMeh (GPIO_NUM_35)
-#define TXD_PIN_ClockMeh (GPIO_NUM_34)
-#define RS485_PIN (GPIO_NUM_22)
-
-#define CSSerial Serial1
-#define CMSerial Serial2
 
 BluetoothSerial SBT;
 
@@ -64,16 +53,15 @@ BluetoothSerial SBT;
 
 static uint8_t sizeOfAnsver = 0;
 void setup() {
-  // put your setup code here, to run once:
+
   pinMode(RS485_PIN,OUTPUT);
   digitalWrite(RS485_PIN,LOW);
-
-  Serial.begin(115200); // 
+  Serial.begin(115200); // @todo reserved for sim900 module
   CSSerial.setRxBufferSize(255);// must be > 128 f.e. 129
   CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
-  CMSerial.setRxBufferSize(255);
-  CMSerial.begin(9600, SERIAL_8N1);
-  SBT.begin("ClockStation");
+  CMSerial.setRxBufferSize(255);// must be > 128 f.e. 129
+  CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
+  SBT.begin("ClockStation"); //BT Name
   
 }
 
@@ -81,7 +69,7 @@ void setup() {
 
 
 void loop() {
-  // unsigned char * answer = (unsigned char *) malloc(10);
+
   
   SBT.print("program start\r\n");
 
