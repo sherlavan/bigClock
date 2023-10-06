@@ -170,6 +170,9 @@ void loop() {
   free(cmanswer);
   delay(5000);
 
+SBT.flush();
+CMSerial.flush();
+CSSerial.flush();
   // // Serial.println(*bytecmd);
   
   // // Serial1.readBytesUntil(0xFE answer,sizeof answer)-1);
