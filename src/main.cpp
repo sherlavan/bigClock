@@ -22,7 +22,7 @@
 // BluetoothSerial SBT;
 WebServer server(80);
 
-String TestData = "";
+std::stringstream TestData;
 
 const char* UpdatePage = 
 "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
@@ -113,9 +113,12 @@ void setup() {
   
   WiFi.begin(ssid, Wpass);
   while (WiFi.status() != WL_CONNECTED) {
+    Serial.println(WiFi.status());
     delay(100);
   }
-  WiFi.disconnect(true);
+  Serial.println(WiFi.localIP());
+  Serial.println(WiFi.RSSI());
+  // WiFi.disconnect(true);
 
   server.on("/serverIndex", HTTP_GET, []() {
     server.sendHeader("Connection", "close");
@@ -124,7 +127,7 @@ void setup() {
 
   server.on("/testdata", HTTP_GET, []() {
     server.sendHeader("Connection", "close");
-    server.send(200, "text/html", TestData);
+    server.send(200, "text/html", TestData.str().c_str());
   });
 
   server.on("/update", HTTP_POST, []() {
@@ -150,18 +153,21 @@ void setup() {
       }
     }
   });
+  Serial.println("webserver settings done..");
   server.begin();
+  Serial.println("webserver start..");
 }
 
 ///repo test
 
 
 void loop() {
-  // server.handleClient();
+  server.handleClient();
+  Serial.println("server Ready");
   
   // SBT.print("program start\r\n");
   // SBT.println(WiFi.localIP());
-  std::stringstream TestData;
+  
 
   unsigned char *  command = buildCMD(ReadSerialNCMD, ParametrsCMD);
 
