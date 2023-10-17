@@ -18,6 +18,7 @@
 #include <string.h>
 
 
+
 // BluetoothSerial SBT;
 WebServer server(80);
 
@@ -274,7 +275,7 @@ void loop() {
   // SBT.println(" ^^^ CM ^^^");
   free(cmanswer);
   delay(1000);
-
+Serial.println(TestData.str().c_str());
 // SBT.flush();
 CMSerial.flush();
 CSSerial.flush();
