@@ -14,10 +14,14 @@
 #include <WebServer.h>
 #include <Update.h>
 #include <ETH.h>
+#include "Func.h"
+#include <string.h>
 
 
-BluetoothSerial SBT;
+// BluetoothSerial SBT;
 WebServer server(80);
+
+String TestData = "";
 
 const char* UpdatePage = 
 "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
@@ -104,7 +108,7 @@ void setup() {
   CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
   CMSerial.setRxBufferSize(255);// must be > 128 f.e. 129
   CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
-  SBT.begin("ClockStation"); //BT Name
+  // SBT.begin("ClockStation"); //BT Name
   
   WiFi.begin(ssid, Wpass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -117,6 +121,11 @@ void setup() {
     server.send(200, "text/html", UpdatePage);
   });
 
+  server.on("/testdata", HTTP_GET, []() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", TestData);
+  });
+
   server.on("/update", HTTP_POST, []() {
     server.sendHeader("Connection", "close");
     server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
@@ -125,18 +134,18 @@ void setup() {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-        Update.printError(SBT);
+        // Update.printError(SBT);
       }
     } else if (upload.status == UPLOAD_FILE_WRITE) {
       /* flashing firmware to ESP*/
       if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-        Update.printError(SBT);
+        // Update.printError(SBT);
       }
     } else if (upload.status == UPLOAD_FILE_END) {
       if (Update.end(true)) { //true to set the size to the current progress
         
       } else {
-        Update.printError(SBT);
+        // Update.printError(SBT);
       }
     }
   });
@@ -149,8 +158,9 @@ void setup() {
 void loop() {
   // server.handleClient();
   
-  SBT.print("program start\r\n");
-  SBT.println(WiFi.localIP());
+  // SBT.print("program start\r\n");
+  // SBT.println(WiFi.localIP());
+  std::stringstream TestData;
 
   unsigned char *  command = buildCMD(ReadSerialNCMD, ParametrsCMD);
 
@@ -158,13 +168,13 @@ void loop() {
   uint8_t answerLen = command[commandLen-1];
 
 
-  SBT.println("commandLen");
-  SBT.println(commandLen);
+  // SBT.println("commandLen");
+  // SBT.println(commandLen);
 
-  SBT.println("answerLen");
-  SBT.println(answerLen);
+  // SBT.println("answerLen");
+  // SBT.println(answerLen);
 
-  SBT.println(" Data send ");
+  // SBT.println(" Data send ");
   // for(uint8_t i=0;i<commandLen;i++){
   //   SBT.print(command[i],HEX);
   //   SBT.print(" ");
@@ -174,11 +184,15 @@ void loop() {
   unsigned char * commandToSend = (unsigned char *) malloc(commandLen - 2);
   for (uint8_t i = 0; i<commandLen - 2; i++){
     commandToSend[i]=command[i+1];
-    SBT.print(commandToSend[i],HEX);
-    SBT.print(" ");
+    
+    // SBT.print(commandToSend[i],HEX);
+    // SBT.print(" ");
 
   }
-  SBT.println();
+  TestData << "cmd to clock \n";
+  TestData << hexStr(commandToSend, commandLen - 2);
+  TestData << "\n";
+  // SBT.println();
 
 
   
@@ -206,22 +220,30 @@ void loop() {
     // sizeOfAnsver = Serial1.available();
     // Serial.println(sizeOfAnsver);
     // free answer);
-    SBT.print("Response time : ");
+    // SBT.print("Response time : ");
     CSSerial.readBytesUntil(0xfe, answer, answerLen + 1);
-    SBT.println(millis() - responseTime);
+    // SBT.println(millis() - responseTime);
 
   }
+  TestData << "Answer from clock\n";
+  TestData << hexStr(answer, answerLen + 1);
+  TestData << "\n";
+  TestData << "Response Time: ";
+  TestData << millis() - responseTime;
+  TestData << "\n";
 
-  SBT.print("Recive response : ");
+
+  // SBT.print("Recive response : ");
     for(uint8_t i = 0; i<answerLen; i++){
-      SBT.print(answer[i], HEX);
-      SBT.print(" ");
+    
+      // SBT.print(answer[i], HEX);
+      // SBT.print(" ");
       }
-  SBT.println("end Rx");
+  // SBT.println("end Rx");
 
   free (answer);
 
-  SBT.println(" vvv CM vvv");
+  // SBT.println(" vvv CM vvv");
 
   static const unsigned char mehParams [] = {0x10, 0x02, 0x50, 0x07, 0x10, 0xFE};
 
@@ -241,15 +263,19 @@ void loop() {
     CMSerial.readBytes(cmanswer,10);
   }
   for(uint8_t i = 0; i<11; i++){
-    SBT.print(cmanswer[i],HEX);
+    // SBT.print(cmanswer[i],HEX);
 
   }
-  SBT.println("");
-  SBT.println(" ^^^ CM ^^^");
+  TestData << "Answer from meh\n";
+  TestData << hexStr(cmanswer, 10);
+  TestData << "\n";
+  
+  // SBT.println("");
+  // SBT.println(" ^^^ CM ^^^");
   free(cmanswer);
   delay(1000);
 
-SBT.flush();
+// SBT.flush();
 CMSerial.flush();
 CSSerial.flush();
   // // Serial.println(*bytecmd);
