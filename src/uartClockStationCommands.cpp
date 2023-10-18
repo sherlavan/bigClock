@@ -12,7 +12,7 @@ uint8_t calculateLenOfParams(const unsigned char * params, const uint8_t paramsL
 }
 
 
-//Сборка полной команды для часовой станции, после отправки выполнить free(*fullCMD)
+
 unsigned char * buildCMD(const unsigned char *cmd, unsigned char *parametrs, const unsigned char *startOfCommand, uint8_t sclen, const unsigned char *endC, uint8_t endCL){
 
     uint8_t cmdLen = cmd[0];

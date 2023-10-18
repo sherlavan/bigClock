@@ -4,8 +4,8 @@
 // #include "driver/uart.h"
 // #include "string.h"
 // #include "driver/gpio.h"
+
 #include <inttypes.h>
-#include <HardwareSerial.h>
 #include "uartClockStationCommands.h"
 #include "config.h"
 #include <WiFi.h>
@@ -124,10 +124,7 @@ void setup() {
     server.send(200, "text/html", UpdatePage);
   });
 
-  server.on("/testdata", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", TestData.c_str());
-  });
+ 
 
   server.on("/update", HTTP_POST, []() {
     server.sendHeader("Connection", "close");
@@ -137,18 +134,19 @@ void setup() {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-        // Update.printError(SBT);
+        Update.printError(Serial);
       }
     } else if (upload.status == UPLOAD_FILE_WRITE) {
+      Serial.println("Update FW is in progress...");
       /* flashing firmware to ESP*/
       if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-        // Update.printError(SBT);
+        Update.printError(Serial);
       }
     } else if (upload.status == UPLOAD_FILE_END) {
       if (Update.end(true)) { //true to set the size to the current progress
-        
+        Serial.println("update finish, restarting..");
       } else {
-        // Update.printError(SBT);
+        Update.printError(Serial);
       }
     }
   });
@@ -164,7 +162,6 @@ void loop() {
   TestData = "";
   server.handleClient();
   Serial.println("server Ready");
-  
 
   unsigned char *  command = buildCMD(ReadSerialNCMD, ParametrsCMD);
 
@@ -172,49 +169,38 @@ void loop() {
   uint8_t answerLen = command[commandLen-1];
 
 
-  // SBT.println("commandLen");
-  // SBT.println(commandLen);
-
-  // SBT.println("answerLen");
-  // SBT.println(answerLen);
-
-  // SBT.println(" Data send ");
-  // for(uint8_t i=0;i<commandLen;i++){
-  //   SBT.print(command[i],HEX);
-  //   SBT.print(" ");
-  // }
-  // SBT.println();
-
   unsigned char * commandToSend = (unsigned char *) malloc(commandLen - 2);
   for (uint8_t i = 0; i<commandLen - 2; i++){
     commandToSend[i]=command[i+1];
-    
-    // SBT.print(commandToSend[i],HEX);
-    // SBT.print(" ");
+  
 
   }
+
   TestData += "cmd to clock \n";
   TestData += hexStr(commandToSend, commandLen - 2);
   TestData += "\n";
-  Serial.println(TestData.c_str());
 
-  
-  // unsigned char *bytecmd;
-  // bytecmd = 0;
+
+  csUartTimeOut = false;
   CSSerial.write(commandToSend, commandLen - 2);
   unsigned long responseTime = millis();
 
   free(commandToSend);
-  // delay(1000);
+
   
   unsigned char * answer = (unsigned char *) malloc(answerLen + 1);
   for (uint8_t i = 0;i<answerLen;i++){
     answer[i]=0;
   }
 // @todo read string from bufer len = 255?
+
   while (CSSerial.available()<answerLen)
   {
     delay(1);
+    if ((millis() - responseTime)> UARTtimeout){
+      csUartTimeOut = true;
+      break;
+    }
   }
   
   if(CSSerial.available()>=answerLen)  {
@@ -226,13 +212,15 @@ void loop() {
     // SBT.println(millis() - responseTime);
 
   }
+  TestData += "cs uart time out: ";
+  TestData += (csUartTimeOut ? "Yes\n" : "No\n");
   TestData += "Answer from clock\n";
   TestData += hexStr(answer, answerLen + 1);
   TestData += "\n";
   TestData += "Response Time: ";
   TestData += millis() - responseTime;
   TestData += "\n";
-  Serial.println(TestData.c_str());
+
 
   // SBT.print("Recive response : ");
     for(uint8_t i = 0; i<answerLen; i++){
@@ -244,70 +232,50 @@ void loop() {
 
   free (answer);
 
-  Serial.println(" vvv CM vvv");
-
   static const unsigned char mehParams [] = {0x10, 0x02, 0x50, 0x07, 0x10, 0xFE};
 
   digitalWrite(RS485_PIN,HIGH);//enable 485 transmition
   CMSerial.write(mehParams,6);
   digitalWrite(RS485_PIN,LOW);//enable 485 recive
-  delay(5);
+  cmUartTimeOut = false;
   unsigned char * cmanswer = (unsigned char *) malloc(11);
   for (uint8_t i = 0;i<11;i++){
     cmanswer[i]=0;
   }
+  responseTime = millis();
   while (CMSerial.available()<10)
   {
     delay(1);
+    if ((millis() - responseTime)> UARTtimeout){
+      cmUartTimeOut = true;
+      break;
+    }
   }
+
   if(CMSerial.available()>0){
     CMSerial.readBytes(cmanswer,10);
   }
-  for(uint8_t i = 0; i<11; i++){
-    Serial.print(cmanswer[i],HEX);
+  // for(uint8_t i = 0; i<11; i++){
+  //   Serial.print(cmanswer[i],HEX);
 
-  }
+  // }
+  TestData += "Meh time out: ";
+  TestData += (cmUartTimeOut ? "Yes\n" : "NO\n");
   TestData += "Answer from meh\n";
   TestData += hexStr(cmanswer, 10);
   TestData += "\n";
   
-  // SBT.println("");
-  Serial.println(" ^^^ CM ^^^");
+
   free(cmanswer);
   delay(1000);
 Serial.println(TestData.c_str());
-// SBT.flush();
+ server.on("/testdata", HTTP_GET, []() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", TestData.c_str());
+  });
+
 CMSerial.flush();
 CSSerial.flush();
-  // // Serial.println(*bytecmd);
-  
-  // // Serial1.readBytesUntil(0xFE answer,sizeof answer)-1);
-      
-  // if(sizeOfAnsver > 4){
-  //   free(command);
-    
-  //   Serial.print("Recive response : ");
-  //   for(u8_t i = 0; i<sizeOfAnsver; i++){
-  //     Serial.print answer[i],HEX);
-  //     Serial.print(" ");
-  //     }
-  //   Serial.println("end Rx");
-
-  //   free answer);
-  // }
-  // byte command[] = {0x10, 0x01, 0x02, 0x56, 0x10, 0xFE};
-  // byte command1[] = {0x10, 0x01, 0x09, 0x13, 0x50, 0x00, 0x06, 0x02, 0x09, 0x23,0x31,0x10,0xFE};
-  // byte command2[] = {0x10, 0x01, 0x05, 0x51, 0x10, 0xFE};
-
-
-
-  // Serial.print(" Data send ");
-  // for (u8_t i = 0; i<sizeof(command1);i++){
-  //   Serial.print(command1[i],HEX);
-  //   Serial.print(",");
-  // }
-  // Serial.print("\r\n");
-
 
 
 }
