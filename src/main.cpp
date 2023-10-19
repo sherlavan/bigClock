@@ -104,9 +104,9 @@ void setup() {
   pinMode(RS485_PIN,OUTPUT);
   digitalWrite(RS485_PIN,LOW);
   Serial.begin(115200); // @todo reserved for sim900 module
-  CSSerial.setRxBufferSize(255);// must be > 128 f.e. 129
+  CSSerial.setRxBufferSize(129);// must be > 128 f.e. 129
   CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
-  CMSerial.setRxBufferSize(255);// must be > 128 f.e. 129
+  CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
   CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
 
   
@@ -203,13 +203,9 @@ void loop() {
     }
   }
   
-  if(CSSerial.available()>=answerLen)  {
-    // sizeOfAnsver = Serial1.available();
-    // Serial.println(sizeOfAnsver);
-    // free answer);
-    // SBT.print("Response time : ");
+  if(CSSerial.available()>=answerLen and !csUartTimeOut)  {
+   
     CSSerial.readBytesUntil(0xfe, answer, answerLen + 1);
-    // SBT.println(millis() - responseTime);
 
   }
   TestData += "cs uart time out: ";
@@ -232,37 +228,39 @@ void loop() {
 
   free (answer);
 
-  static const unsigned char mehParams [] = {0x10, 0x02, 0x50, 0x07, 0x10, 0xFE};
+  static unsigned char mehParams [] = {0x10, 0x02, 0x50, 0x07, 0x10, 0xFE};
+  TestData += "\ncmd to meh: \n";
+  TestData += hexStr(mehParams, 6);
 
   digitalWrite(RS485_PIN,HIGH);//enable 485 transmition
+  serialFlush(CMSerial);
   CMSerial.write(mehParams,6);
   digitalWrite(RS485_PIN,LOW);//enable 485 recive
   cmUartTimeOut = false;
-  unsigned char * cmanswer = (unsigned char *) malloc(11);
-  for (uint8_t i = 0;i<11;i++){
+  unsigned char * cmanswer = (unsigned char *) malloc(16);
+  for (uint8_t i = 0;i<15;i++){
     cmanswer[i]=0;
   }
   responseTime = millis();
-  while (CMSerial.available()<10)
+  while (CMSerial.available()<15)
   {
     delay(1);
     if ((millis() - responseTime)> UARTtimeout){
       cmUartTimeOut = true;
+      serialFlush(CMSerial);
       break;
     }
   }
 
-  if(CMSerial.available()>0){
-    CMSerial.readBytes(cmanswer,10);
+  if(CMSerial.available()>0 and !cmUartTimeOut){
+    CMSerial.readBytes(cmanswer,15);
   }
-  // for(uint8_t i = 0; i<11; i++){
-  //   Serial.print(cmanswer[i],HEX);
+  serialFlush(CMSerial);
 
-  // }
   TestData += "Meh time out: ";
   TestData += (cmUartTimeOut ? "Yes\n" : "NO\n");
   TestData += "Answer from meh\n";
-  TestData += hexStr(cmanswer, 10);
+  TestData += hexStr(cmanswer, 15);
   TestData += "\n";
   
 

@@ -1,5 +1,11 @@
 #include "Func.h"
 
+void serialFlush(HardwareSerial & port){
+  while(port.available() > 0) {
+    char t = port.read();
+  }
+}
+
 std::string hexStr(unsigned char* data, int len)
 {
     std::stringstream ss;

@@ -11,7 +11,7 @@
 #define CSSerial Serial1//rename UART for ClockStation
 #define CMSerial Serial2//rename UART for ClockMehanics
 #define SIMSerial Serial0
-#define UARTtimeout 100 //time out of uart response in ms
+#define UARTtimeout 200 //time out of uart response in ms
 
 static bool csUartTimeOut = false;
 static bool cmUartTimeOut = false;
