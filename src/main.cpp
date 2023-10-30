@@ -15,11 +15,37 @@
 #include <ETH.h>
 #include "Func.h"
 #include <string>
+#include <SPI.h>
+#include <Ethernet.h>
 
+#define MAX_SOCK_NUM 2
+
+#define USE_TWO_ETH_PORTS 0
+#define ETHERNET_RESET_PIN      22      // ESP32 pin where reset pin from W5500 is connected
+#define ETHERNET_CS_PIN         5       // ESP32 pin where CS pin from W5500 is connected
+
+#define ETH_TYPE        ETH_PHY_W5500
+#define ETH_ADDR         1
+#define ETH_CS          15
+#define ETH_IRQ          4
+#define ETH_RST          5
+#define ETH_SPI_HOST    SPI2_HOST
+#define ETH_SPI_SCK     14
+#define ETH_SPI_MISO    12
+#define ETH_SPI_MOSI    13
+
+#define TCP_HOSTNAME           "192.168.88.24"
+#define TCP_PORT               9999
 
 
 // BluetoothSerial SBT;
 WebServer server(80);
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+EthernetClient ethClient;
+
+uint32_t lastTcpPublishTime = 0;
+uint8_t buffer[512];
+
 
 std::string TestData = "";
 
@@ -61,46 +87,45 @@ const char* UpdatePage =
  "</script>";
 
 
+/*
+ * Wiz W5500 reset function
+ */
+void ethernetWizReset(const uint8_t resetPin) {
+    pinMode(resetPin, OUTPUT);
+    digitalWrite(resetPin, HIGH);
+    delay(250);
+    digitalWrite(resetPin, LOW);
+    delay(50);
+    digitalWrite(resetPin, HIGH);
+    delay(350);
+}
+
+void connectEthernet() {
+    delay(500);
 
 
-// void init(void) {
-//     const uart_config_t uart_config = {
-//         .baud_rate = 57600,
-//         .data_bits = UART_DATA_8_BITS,
-//         .parity = UART_PARITY_DISABLE,
-//         .stop_bits = UART_STOP_BITS_1,
-//         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-//     };
-//     // We won't use a buffer for sending data.
-//     uart_driver_install(UART, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
-//     uart_param_config(UART, &uart_config);
-//     uart_set_pin(UART, TXD_PIN_ClockStation, RXD_PIN_ClockStation, -1, -1);
-// }
+    Ethernet.init(ETHERNET_CS_PIN);
+    ethernetWizReset(ETHERNET_RESET_PIN);
 
-// int sendData( const char* data)
-// {
-//     const int len = strlen(data);
-//     const int txBytes = uart_write_bytes(UART, data, len);
-//     // ESP_LOGI("Wrote %d bytes", txBytes);
-//     return txBytes;
-// }
+    Ethernet.begin(mac);
+    delay(200);
 
+}
 
-// char* reciveData(void){
-// char* data = (char*) malloc(RX_BUF_SIZE+1);
-// const int rxBytes = uart_read_bytes(UART, data, RX_BUF_SIZE, 50 / portTICK_PERIOD_MS);
-// if (rxBytes > 0) {
-//     data[rxBytes] = 0;
-//     ESP_LOGI( "Read %d bytes: '%s'", rxBytes, data);
-// }
-
-// return data;
-// }
-
+void connectToServer() {
+    Serial.println("Connecting to TCP server...");
+    while (!ethClient.connect(TCP_HOSTNAME, TCP_PORT))  {
+      Serial.println("Connection failed. Reconnecting...");
+      delay(1000);
+    }
+    Serial.println("Connected to TCP server");
+}
 
 static uint8_t sizeOfAnsver = 0;
 void setup() {
 
+  Ethernet.init(ETHERNET_CS_PIN);
+  Ethernet.begin(mac);
   pinMode(RS485_PIN,OUTPUT);
   digitalWrite(RS485_PIN,LOW);
   Serial.begin(115200); // @todo reserved for sim900 module
@@ -109,7 +134,7 @@ void setup() {
   CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
   CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
 
-  
+
   WiFi.begin(ssid, Wpass);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.println(WiFi.status());
@@ -117,7 +142,7 @@ void setup() {
   }
   Serial.println(WiFi.localIP());
   Serial.println(WiFi.RSSI());
-  // WiFi.disconnect(true);
+
 
   server.on("/serverIndex", HTTP_GET, []() {
     server.sendHeader("Connection", "close");
@@ -272,8 +297,14 @@ Serial.println(TestData.c_str());
     server.send(200, "text/html", TestData.c_str());
   });
 
+ethClient.write(TestData.c_str());
+
 CMSerial.flush();
 CSSerial.flush();
+if (ethClient.available()) {
+    char c = ethClient.read();
+    Serial.print(c);
+  }
 
 
 }
