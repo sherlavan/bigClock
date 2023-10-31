@@ -16,23 +16,14 @@
 #include "Func.h"
 #include <string>
 #include <SPI.h>
-#include <Ethernet.h>
+#include <Ethernet_Generic.h>
 
-#define MAX_SOCK_NUM 2
+#define MAX_SOCK_NUM 8
 
 #define USE_TWO_ETH_PORTS 0
 #define ETHERNET_RESET_PIN      22      // ESP32 pin where reset pin from W5500 is connected
 #define ETHERNET_CS_PIN         5       // ESP32 pin where CS pin from W5500 is connected
 
-#define ETH_TYPE        ETH_PHY_W5500
-#define ETH_ADDR         1
-#define ETH_CS          15
-#define ETH_IRQ          4
-#define ETH_RST          5
-#define ETH_SPI_HOST    SPI2_HOST
-#define ETH_SPI_SCK     14
-#define ETH_SPI_MISO    12
-#define ETH_SPI_MOSI    13
 
 #define TCP_HOSTNAME           "192.168.88.24"
 #define TCP_PORT               9999
@@ -107,7 +98,7 @@ void connectEthernet() {
     Ethernet.init(ETHERNET_CS_PIN);
     ethernetWizReset(ETHERNET_RESET_PIN);
 
-    Ethernet.begin(mac);
+    Ethernet.begin(mac,10000,1000);
     delay(200);
 
 }
@@ -124,8 +115,8 @@ void connectToServer() {
 static uint8_t sizeOfAnsver = 0;
 void setup() {
 
-  Ethernet.init(ETHERNET_CS_PIN);
-  Ethernet.begin(mac);
+  // Ethernet.init(ETHERNET_CS_PIN);
+  // Ethernet.begin(mac);
   pinMode(RS485_PIN,OUTPUT);
   digitalWrite(RS485_PIN,LOW);
   Serial.begin(115200); // @todo reserved for sim900 module
@@ -178,6 +169,22 @@ void setup() {
   Serial.println("webserver settings done..");
   server.begin();
   Serial.println("webserver start..");
+
+  Serial.print("MOSI: ");
+  Serial.println(MOSI);
+  Serial.print("MISO: ");
+  Serial.println(MISO);
+  Serial.print("SCK: ");
+  Serial.println(SCK);
+  Serial.print("SS: ");
+  Serial.println(SS);
+  Serial.println(Ethernet.getChip());
+  W5100Class w55;
+  Serial.println(w55.getChip());
+
+  connectEthernet();
+  Serial.println("Eth init pass?");
+  Serial.println(Ethernet.linkReport());
 }
 
 ///repo test
