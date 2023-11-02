@@ -1,15 +1,27 @@
 #if !defined(__ESPCONFIG__)
 #define __ESPCONFIG__
+#include "HardwareSerial.h"
 
-#define TXD_PIN_ClockStation (GPIO_NUM_2)//(GPIO_NUM_5) for esp32c3
-#define RXD_PIN_ClockStation (GPIO_NUM_4)//(GPIO_NUM_4) for esp32c3
+struct serialPins {
+    gpio_num_t TXPIN;
+    gpio_num_t RXPIN;
+    unsigned long baud;
+    uint32_t config; 
 
-#define RXD_PIN_ClockMeh (GPIO_NUM_35)//UART for rs485 connections to clock mehanics
-#define TXD_PIN_ClockMeh (GPIO_NUM_34)//UART for rs485 connections to clock mehanics
-#define RS485_PIN (GPIO_NUM_22) //Enable pin for rs485 connections to clock mehanics
+} UART_pins;
 
-#define CSSerial Serial1//rename UART for ClockStation
-#define CMSerial Serial2//rename UART for ClockMehanics
+
+#define TXD_PIN_ClockStation (GPIO_NUM_25) //GPIO_NUM_2
+#define RXD_PIN_ClockStation (GPIO_NUM_26) //GPIO_NUM_4
+
+#define RXD_PIN_ClockMeh (GPIO_NUM_27)//UART for rs485 connections to clock mehanics
+#define RS485_PIN_ClockMeh (GPIO_NUM_12)//Enable pin for rs485 connections to clock mehanics !!hi at boot!!
+#define TXD_PIN_ClockMeh (GPIO_NUM_13)//UART for rs485 connections to clock mehanics
+#define RXD_PIN_Sim800 (GPIO_NUM_32)
+#define TXD_PIN_Sim800 (GPIO_NUM_33)
+
+
+
 #define SIMSerial Serial0
 #define UARTtimeout 200 //time out of uart response in ms
 

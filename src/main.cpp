@@ -37,6 +37,11 @@ EthernetClient ethClient;
 uint32_t lastTcpPublishTime = 0;
 uint8_t buffer[512];
 
+serialPins clockStation;
+serialPins clockMehanics;
+serialPins sim800;
+
+
 
 std::string TestData = "";
 
@@ -78,30 +83,7 @@ const char* UpdatePage =
  "</script>";
 
 
-/*
- * Wiz W5500 reset function
- */
-void ethernetWizReset(const uint8_t resetPin) {
-    pinMode(resetPin, OUTPUT);
-    digitalWrite(resetPin, HIGH);
-    delay(250);
-    digitalWrite(resetPin, LOW);
-    delay(50);
-    digitalWrite(resetPin, HIGH);
-    delay(350);
-}
 
-void connectEthernet() {
-    delay(500);
-
-
-    Ethernet.init(ETHERNET_CS_PIN);
-    ethernetWizReset(ETHERNET_RESET_PIN);
-
-    Ethernet.begin(mac,10000,1000);
-    delay(200);
-
-}
 
 void connectToServer() {
     Serial.println("Connecting to TCP server...");
@@ -117,13 +99,31 @@ void setup() {
 
   // Ethernet.init(ETHERNET_CS_PIN);
   // Ethernet.begin(mac);
-  pinMode(RS485_PIN,OUTPUT);
-  digitalWrite(RS485_PIN,LOW);
+  clockStation.TXPIN = TXD_PIN_ClockStation;
+  clockStation.RXPIN = RXD_PIN_ClockStation;
+  clockStation.baud = 57600;
+  clockStation.config = SERIAL_8N1;
+
+  clockMehanics.TXPIN = TXD_PIN_ClockMeh;
+  clockMehanics.RXPIN = RXD_PIN_ClockMeh;
+  clockMehanics.baud = 9600;
+  clockMehanics.config = SERIAL_8N1;
+
+  sim800.TXPIN = TXD_PIN_Sim800;
+  sim800.RXPIN = RXD_PIN_Sim800;
+
+  
+
+  pinMode(RS485_PIN_ClockMeh, OUTPUT);
+  digitalWrite(RS485_PIN_ClockMeh, LOW);//set to recive 485 data
   Serial.begin(115200); // @todo reserved for sim900 module
-  CSSerial.setRxBufferSize(129);// must be > 128 f.e. 129
-  CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
-  CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
-  CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
+  Serial1.setRxBufferSize(129);
+  // Serial1.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
+
+  // CSSerial.setRxBufferSize(129);// must be > 128 f.e. 129
+  // CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
+  // CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
+  // CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
 
 
   WiFi.begin(ssid, Wpass);
@@ -170,21 +170,6 @@ void setup() {
   server.begin();
   Serial.println("webserver start..");
 
-  Serial.print("MOSI: ");
-  Serial.println(MOSI);
-  Serial.print("MISO: ");
-  Serial.println(MISO);
-  Serial.print("SCK: ");
-  Serial.println(SCK);
-  Serial.print("SS: ");
-  Serial.println(SS);
-  Serial.println(Ethernet.getChip());
-  W5100Class w55;
-  Serial.println(w55.getChip());
-
-  connectEthernet();
-  Serial.println("Eth init pass?");
-  Serial.println(Ethernet.linkReport());
 }
 
 ///repo test
@@ -205,7 +190,6 @@ void loop() {
   for (uint8_t i = 0; i<commandLen - 2; i++){
     commandToSend[i]=command[i+1];
   
-
   }
 
   TestData += "cmd to clock \n";
@@ -214,7 +198,9 @@ void loop() {
 
 
   csUartTimeOut = false;
-  CSSerial.write(commandToSend, commandLen - 2);
+  
+  Serial1.begin(clockStation.baud, clockStation.config, clockStation.RXPIN, clockStation.TXPIN);
+  Serial1.write(commandToSend, commandLen - 2);
   unsigned long responseTime = millis();
 
   free(commandToSend);
@@ -226,7 +212,7 @@ void loop() {
   }
 // @todo read string from bufer len = 255?
 
-  while (CSSerial.available()<answerLen)
+  while (Serial1.available()<answerLen)
   {
     delay(1);
     if ((millis() - responseTime)> UARTtimeout){
@@ -235,11 +221,13 @@ void loop() {
     }
   }
   
-  if(CSSerial.available()>=answerLen and !csUartTimeOut)  {
+  if(Serial1.available()>=answerLen and !csUartTimeOut)  {
    
-    CSSerial.readBytesUntil(0xfe, answer, answerLen + 1);
+    Serial1.readBytesUntil(0xfe, answer, answerLen + 1);
 
   }
+
+  Serial1.end();
   TestData += "cs uart time out: ";
   TestData += (csUartTimeOut ? "Yes\n" : "No\n");
   TestData += "Answer from clock\n";
@@ -250,44 +238,37 @@ void loop() {
   TestData += "\n";
 
 
-  // SBT.print("Recive response : ");
-    for(uint8_t i = 0; i<answerLen; i++){
-    
-      // SBT.print(answer[i], HEX);
-      // SBT.print(" ");
-      }
-  // SBT.println("end Rx");
-
   free (answer);
 
   static unsigned char mehParams [] = {0x10, 0x02, 0x50, 0x07, 0x10, 0xFE};
   TestData += "\ncmd to meh: \n";
   TestData += hexStr(mehParams, 6);
 
-  digitalWrite(RS485_PIN,HIGH);//enable 485 transmition
-  serialFlush(CMSerial);
-  CMSerial.write(mehParams,6);
-  digitalWrite(RS485_PIN,LOW);//enable 485 recive
+  digitalWrite(RS485_PIN_ClockMeh, HIGH);//enable 485 transmition
+  serialFlush(Serial1);
+  Serial1.begin(clockMehanics.baud, clockMehanics.config, clockMehanics.RXPIN, clockMehanics.TXPIN);
+  Serial1.write(mehParams,6);
+  digitalWrite(RS485_PIN_ClockMeh, LOW);//enable 485 recive
   cmUartTimeOut = false;
   unsigned char * cmanswer = (unsigned char *) malloc(16);
   for (uint8_t i = 0;i<15;i++){
     cmanswer[i]=0;
   }
   responseTime = millis();
-  while (CMSerial.available()<15)
+  while (Serial1.available()<15)//answerlen
   {
     delay(1);
     if ((millis() - responseTime)> UARTtimeout){
       cmUartTimeOut = true;
-      serialFlush(CMSerial);
+      serialFlush(Serial1);
       break;
     }
   }
 
-  if(CMSerial.available()>0 and !cmUartTimeOut){
-    CMSerial.readBytes(cmanswer,15);
+  if(Serial1.available()>0 and !cmUartTimeOut){
+    Serial1.readBytes(cmanswer,15);
   }
-  serialFlush(CMSerial);
+  Serial1.end();
 
   TestData += "Meh time out: ";
   TestData += (cmUartTimeOut ? "Yes\n" : "NO\n");
@@ -304,14 +285,14 @@ Serial.println(TestData.c_str());
     server.send(200, "text/html", TestData.c_str());
   });
 
-ethClient.write(TestData.c_str());
+// ethClient.write(TestData.c_str());
 
-CMSerial.flush();
-CSSerial.flush();
-if (ethClient.available()) {
-    char c = ethClient.read();
-    Serial.print(c);
-  }
+// CMSerial.flush();
+// CSSerial.flush();
+// if (ethClient.available()) {
+//     char c = ethClient.read();
+//     Serial.print(c);
+//   }
 
 
 }
