@@ -1,4 +1,6 @@
 #include "Func.h"
+#include <WiFi.h>
+#include <ETH.h>
 
 void serialFlush(HardwareSerial & port){
   while(port.available() > 0) {
@@ -35,3 +37,5 @@ static bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsig
     }
     return true;
 }
+
+

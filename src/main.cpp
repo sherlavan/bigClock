@@ -1,9 +1,7 @@
-// #include <Arduino.h>
-// #include "esp_system.h"
-// #include "esp_log.h"
-// #include "driver/uart.h"
-// #include "string.h"
-// #include "driver/gpio.h"
+#ifdef ETH_CLK_MODE
+#undef ETH_CLK_MODE
+#endif
+#define ETH_CLK_MODE    ETH_CLOCK_GPIO17_OUT
 
 #include <inttypes.h>
 #include "uartClockStationCommands.h"
@@ -16,13 +14,17 @@
 #include "Func.h"
 #include <string>
 #include <SPI.h>
-#include <Ethernet_Generic.h>
+#include <Arduino.h>
 
-#define MAX_SOCK_NUM 8
 
-#define USE_TWO_ETH_PORTS 0
-#define ETHERNET_RESET_PIN      22      // ESP32 pin where reset pin from W5500 is connected
-#define ETHERNET_CS_PIN         5       // ESP32 pin where CS pin from W5500 is connected
+// Pin# of the enable signal for the external crystal oscillator (-1 to disable for internal APLL source)
+#define ETH_POWER_PIN   -1
+
+// Type of the Ethernet PHY (LAN8720)
+#define ETH_TYPE        ETH_PHY_LAN8720
+
+// I²C-address of Ethernet PHY (0 or 1 for LAN8720, 31 for TLK110)
+#define ETH_ADDR        1
 
 
 #define TCP_HOSTNAME           "192.168.88.24"
@@ -32,14 +34,17 @@
 // BluetoothSerial SBT;
 WebServer server(80);
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-EthernetClient ethClient;
+
 
 uint32_t lastTcpPublishTime = 0;
 uint8_t buffer[512];
-
 serialPins clockStation;
 serialPins clockMehanics;
 serialPins sim800;
+
+MobileInternet megafon;
+
+
 
 
 
@@ -84,21 +89,71 @@ const char* UpdatePage =
 
 
 
-
-void connectToServer() {
-    Serial.println("Connecting to TCP server...");
-    while (!ethClient.connect(TCP_HOSTNAME, TCP_PORT))  {
-      Serial.println("Connection failed. Reconnecting...");
-      delay(1000);
-    }
-    Serial.println("Connected to TCP server");
+void WiFiEvent(WiFiEvent_t event) {
+  switch (event) {
+    case SYSTEM_EVENT_ETH_START:
+      Serial.println("ETH Started");
+      //set eth hostname here
+      ETH.setHostname("esp32-ethernet");
+      break;
+    case SYSTEM_EVENT_ETH_CONNECTED:
+      Serial.println("ETH Connected");
+      break;
+    case SYSTEM_EVENT_ETH_GOT_IP:
+      Serial.print("ETH MAC: ");
+      Serial.print(ETH.macAddress());
+      Serial.print(", IPv4: ");
+      Serial.print(ETH.localIP());
+      if (ETH.fullDuplex()) {
+        Serial.print(", FULL_DUPLEX");
+      }
+      Serial.print(", ");
+      Serial.print(ETH.linkSpeed());
+      Serial.println("Mbps");
+      eth_connected = true;
+      break;
+    case SYSTEM_EVENT_ETH_DISCONNECTED:
+      Serial.println("ETH Disconnected");
+      eth_connected = false;
+      break;
+    case SYSTEM_EVENT_ETH_STOP:
+      Serial.println("ETH Stopped");
+      eth_connected = false;
+      break;
+    default:
+      break;
+  }
 }
+
+void testClient(const char * host, uint16_t port) {
+  Serial.print("\nconnecting to ");
+  Serial.println(host);
+
+  WiFiClient client;
+  if (!client.connect(host, port)) {
+    Serial.println("connection failed");
+    return;
+  }
+  client.printf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", host);
+  while (client.connected() && !client.available());
+  while (client.available()) {
+    Serial.write(client.read());
+  }
+
+  Serial.println("closing connection\n");
+  client.stop();
+}
+
 
 static uint8_t sizeOfAnsver = 0;
 void setup() {
 
   // Ethernet.init(ETHERNET_CS_PIN);
   // Ethernet.begin(mac);
+  megafon.APN = "internet";
+  megafon.USR = "gdata";
+  megafon.PAS = "gdata";
+
   clockStation.TXPIN = TXD_PIN_ClockStation;
   clockStation.RXPIN = RXD_PIN_ClockStation;
   clockStation.baud = 57600;
@@ -111,8 +166,7 @@ void setup() {
 
   sim800.TXPIN = TXD_PIN_Sim800;
   sim800.RXPIN = RXD_PIN_Sim800;
-
-  
+    
 
   pinMode(RS485_PIN_ClockMeh, OUTPUT);
   digitalWrite(RS485_PIN_ClockMeh, LOW);//set to recive 485 data
@@ -124,7 +178,8 @@ void setup() {
   // CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
   // CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
   // CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
-
+  WiFi.onEvent(WiFiEvent);
+  ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
 
   WiFi.begin(ssid, Wpass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -279,21 +334,16 @@ void loop() {
 
   free(cmanswer);
   delay(1000);
-Serial.println(TestData.c_str());
- server.on("/testdata", HTTP_GET, []() {
+  Serial.println(TestData.c_str());
+  server.on("/testdata", HTTP_GET, []() {
     server.sendHeader("Connection", "close");
     server.send(200, "text/html", TestData.c_str());
   });
 
-// ethClient.write(TestData.c_str());
+if (eth_connected) {
+    testClient("google.com", 80);
+  }
 
-// CMSerial.flush();
-// CSSerial.flush();
-// if (ethClient.available()) {
-//     char c = ethClient.read();
-//     Serial.print(c);
-//   }
-
-
+  delay(5000);
 }
 
