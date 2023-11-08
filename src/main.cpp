@@ -1,7 +1,17 @@
-#ifdef ETH_CLK_MODE
-#undef ETH_CLK_MODE
-#endif
-#define ETH_CLK_MODE    ETH_CLOCK_GPIO17_OUT
+#define CONFIG_ETH_SPI_ETHERNET_W5500 1
+#define ETH_TYPE        ETH_PHY_W5500
+#define ETH_PHY_SPI_HOST    SPI2_HOST
+#define ETH_ADDR         1
+#define ETH_CS          5
+#define ETH_IRQ          4
+#define ETH_RST          22
+
+
+// SPI pins
+#define ETH_SPI_SCK     18
+#define ETH_SPI_MISO    19
+#define ETH_SPI_MOSI    23
+
 
 #include <inttypes.h>
 #include "uartClockStationCommands.h"
@@ -16,15 +26,8 @@
 #include <SPI.h>
 #include <Arduino.h>
 
+static bool eth_connected = false;
 
-// Pin# of the enable signal for the external crystal oscillator (-1 to disable for internal APLL source)
-#define ETH_POWER_PIN   -1
-
-// Type of the Ethernet PHY (LAN8720)
-#define ETH_TYPE        ETH_PHY_LAN8720
-
-// I²C-address of Ethernet PHY (0 or 1 for LAN8720, 31 for TLK110)
-#define ETH_ADDR        1
 
 
 #define TCP_HOSTNAME           "192.168.88.24"
@@ -89,34 +92,28 @@ const char* UpdatePage =
 
 
 
-void WiFiEvent(WiFiEvent_t event) {
+void onEvent(arduino_event_id_t event, arduino_event_info_t info)
+{
   switch (event) {
-    case SYSTEM_EVENT_ETH_START:
+    case ARDUINO_EVENT_ETH_START:
       Serial.println("ETH Started");
       //set eth hostname here
-      ETH.setHostname("esp32-ethernet");
+      ETH.setHostname("esp32-eth0");
       break;
-    case SYSTEM_EVENT_ETH_CONNECTED:
+    case ARDUINO_EVENT_ETH_CONNECTED:
       Serial.println("ETH Connected");
       break;
-    case SYSTEM_EVENT_ETH_GOT_IP:
-      Serial.print("ETH MAC: ");
-      Serial.print(ETH.macAddress());
-      Serial.print(", IPv4: ");
-      Serial.print(ETH.localIP());
-      if (ETH.fullDuplex()) {
-        Serial.print(", FULL_DUPLEX");
-      }
-      Serial.print(", ");
-      Serial.print(ETH.linkSpeed());
-      Serial.println("Mbps");
+    case ARDUINO_EVENT_ETH_GOT_IP:
+      Serial.printf("ETH Got IP: '%s'\n", esp_netif_get_desc(info.got_ip.esp_netif));
+      
       eth_connected = true;
       break;
-    case SYSTEM_EVENT_ETH_DISCONNECTED:
+
+    case ARDUINO_EVENT_ETH_DISCONNECTED:
       Serial.println("ETH Disconnected");
       eth_connected = false;
       break;
-    case SYSTEM_EVENT_ETH_STOP:
+    case ARDUINO_EVENT_ETH_STOP:
       Serial.println("ETH Stopped");
       eth_connected = false;
       break;
@@ -125,7 +122,8 @@ void WiFiEvent(WiFiEvent_t event) {
   }
 }
 
-void testClient(const char * host, uint16_t port) {
+void testClient(const char * host, uint16_t port)
+{
   Serial.print("\nconnecting to ");
   Serial.println(host);
 
@@ -148,6 +146,10 @@ void testClient(const char * host, uint16_t port) {
 static uint8_t sizeOfAnsver = 0;
 void setup() {
 
+WiFi.onEvent(onEvent);
+
+  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);
+  ETH.begin(ETH_TYPE, ETH_ADDR, ETH_CS, ETH_IRQ, ETH_RST, SPI);
   // Ethernet.init(ETHERNET_CS_PIN);
   // Ethernet.begin(mac);
   megafon.APN = "internet";
@@ -178,8 +180,10 @@ void setup() {
   // CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
   // CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
   // CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
-  WiFi.onEvent(WiFiEvent);
-  ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
+  WiFi.onEvent(onEvent);
+
+  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);
+  ETH.begin(ETH_TYPE, ETH_ADDR, ETH_CS, ETH_IRQ, ETH_RST, SPI);
 
   WiFi.begin(ssid, Wpass);
   while (WiFi.status() != WL_CONNECTED) {
