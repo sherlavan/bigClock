@@ -1,42 +1,44 @@
-#define CONFIG_ETH_SPI_ETHERNET_W5500 1
-#define ETH_TYPE        ETH_PHY_W5500
-#define ETH_PHY_SPI_HOST    SPI2_HOST
-#define ETH_ADDR         1
+// #define CONFIG_ETH_SPI_ETHERNET_W5500 1
+// #define ETH_TYPE        ETH_PHY_W5500
+// #define ETH_PHY_SPI_HOST    SPI2_HOST
+// #define ETH_ADDR         1
+
+// #define ETH_IRQ          4
+// #define ETH_RST          22
+
 #define ETH_CS          5
-#define ETH_IRQ          4
-#define ETH_RST          22
-
-
 // SPI pins
-#define ETH_SPI_SCK     18
-#define ETH_SPI_MISO    19
-#define ETH_SPI_MOSI    23
+// #define ETH_SPI_SCK     18
+// #define ETH_SPI_MISO    19
+// #define ETH_SPI_MOSI    23
 
-
+#include "config.h"
 #include <inttypes.h>
 #include "uartClockStationCommands.h"
-#include "config.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <WebServer.h>
 #include <Update.h>
-#include "ETH.h"
+#include <WebServer.h>
+
 #include "Func.h"
 #include <string>
-#include <SPI.h>
-#include <Arduino.h>
+// #include <SPI.h>
+// #include <Arduino.h>
+#include <EthernetClient.h>
 
 static bool eth_connected = false;
 
 
+char serverURL[] = "arduino.tips";
+
+EthernetClient EClient;
 
 #define TCP_HOSTNAME           "192.168.88.24"
 #define TCP_PORT               9999
 
 
-// BluetoothSerial SBT;
 WebServer server(80);
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+// byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
 
 uint32_t lastTcpPublishTime = 0;
@@ -90,68 +92,67 @@ const char* UpdatePage =
  "});"
  "</script>";
 
-
-
-void onEvent(arduino_event_id_t event, arduino_event_info_t info)
+void printoutData()
 {
-  switch (event) {
-    case ARDUINO_EVENT_ETH_START:
-      Serial.println("ETH Started");
-      //set eth hostname here
-      ETH.setHostname("esp32-eth0");
-      break;
-    case ARDUINO_EVENT_ETH_CONNECTED:
-      Serial.println("ETH Connected");
-      break;
-    case ARDUINO_EVENT_ETH_GOT_IP:
-      Serial.printf("ETH Got IP: '%s'\n", esp_netif_get_desc(info.got_ip.esp_netif));
-      
-      eth_connected = true;
-      break;
-
-    case ARDUINO_EVENT_ETH_DISCONNECTED:
-      Serial.println("ETH Disconnected");
-      eth_connected = false;
-      break;
-    case ARDUINO_EVENT_ETH_STOP:
-      Serial.println("ETH Stopped");
-      eth_connected = false;
-      break;
-    default:
-      break;
+  // if there are incoming bytes available
+  // from the server, read them and print them
+  while (EClient.available())
+  {
+    char c = EClient.read();
+    Serial.write(c);
+    Serial.flush();
   }
 }
 
-void testClient(const char * host, uint16_t port)
-{
-  Serial.print("\nconnecting to ");
-  Serial.println(host);
 
-  WiFiClient client;
-  if (!client.connect(host, port)) {
-    Serial.println("connection failed");
-    return;
-  }
-  client.printf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", host);
-  while (client.connected() && !client.available());
-  while (client.available()) {
-    Serial.write(client.read());
-  }
-
-  Serial.println("closing connection\n");
-  client.stop();
-}
 
 
 static uint8_t sizeOfAnsver = 0;
 void setup() {
+Serial.begin(115200); 
+Serial.println("Starting Setup stage");
+  delay(5555); //Check for eth init
 
-WiFi.onEvent(onEvent);
+Ethernet.init (ETH_CS);
 
-  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);
-  ETH.begin(ETH_TYPE, ETH_ADDR, ETH_CS, ETH_IRQ, ETH_RST, SPI);
-  // Ethernet.init(ETHERNET_CS_PIN);
-  // Ethernet.begin(mac);
+  // start the ethernet connection and the server:
+  // Use DHCP dynamic IP and random mac
+  uint16_t index = millis() % NUMBER_OF_MAC;
+  // Use Static IP
+  //Ethernet.begin(mac[index], ip);
+  Ethernet.begin(mac[index]);
+  Serial.print("Using mac: ");
+  for(int i =0;i<6;i++){
+    Serial.print(mac[index][i]);
+    Serial.print(":");
+  }
+  Serial.println();
+
+  Serial.print("Got IP address: ");
+  Serial.println(Ethernet.localIP());
+  Serial.print("Connection speed: ");
+  Serial.println(Ethernet.speedReport());
+  Serial.print(F(", Duplex: "));
+  Serial.println(Ethernet.duplexReport());
+  Serial.print(F(", Link status: "));
+  Serial.println(Ethernet.linkReport());
+
+  if (EClient.connect(serverURL, 80))
+  {
+    Serial.println(F("Connected to server"));
+    // Make a HTTP request
+    EClient.println(F("GET /asciilogo.txt HTTP/1.1"));
+    EClient.println(F("Host: arduino.tips"));
+    EClient.println(F("Connection: close"));
+    EClient.println();
+  }
+  else
+  {
+    Serial.println("Could not connect to given URL:");
+  }
+
+  
+
   megafon.APN = "internet";
   megafon.USR = "gdata";
   megafon.PAS = "gdata";
@@ -172,18 +173,10 @@ WiFi.onEvent(onEvent);
 
   pinMode(RS485_PIN_ClockMeh, OUTPUT);
   digitalWrite(RS485_PIN_ClockMeh, LOW);//set to recive 485 data
-  Serial.begin(115200); // @todo reserved for sim900 module
+  
   Serial1.setRxBufferSize(129);
-  // Serial1.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
 
-  // CSSerial.setRxBufferSize(129);// must be > 128 f.e. 129
-  // CSSerial.begin(57600, SERIAL_8N1, RXD_PIN_ClockStation, TXD_PIN_ClockStation); // uart1 with clock station
-  // CMSerial.setRxBufferSize(129);// must be > 128 f.e. 129
-  // CMSerial.begin(9600, SERIAL_8N1);// uart2 with clock mehanics
-  WiFi.onEvent(onEvent);
 
-  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);
-  ETH.begin(ETH_TYPE, ETH_ADDR, ETH_CS, ETH_IRQ, ETH_RST, SPI);
 
   WiFi.begin(ssid, Wpass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -235,6 +228,17 @@ WiFi.onEvent(onEvent);
 
 
 void loop() {
+
+
+  // if the server's disconnected, stop the client
+  if (!EClient.connected())
+  {
+    printoutData();
+
+    Serial.println();
+    Serial.println(F("Disconnecting from server..."));
+    EClient.stop();
+  }
   TestData = "";
   server.handleClient();
   Serial.println("server Ready");
@@ -344,9 +348,7 @@ void loop() {
     server.send(200, "text/html", TestData.c_str());
   });
 
-if (eth_connected) {
-    testClient("google.com", 80);
-  }
+
 
   delay(5000);
 }
