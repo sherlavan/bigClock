@@ -111,9 +111,16 @@ static uint8_t sizeOfAnsver = 0;
 void setup() {
 Serial.begin(115200); 
 Serial.println("Starting Setup stage");
-  delay(5555); //Check for eth init
 
 Ethernet.init (ETH_CS);
+EthernetLinkStatus link = Ethernet.linkStatus();
+if(link == Unknown){
+  Serial.println("Problem with eathernet module..., not initialized");
+}
+
+if(link == LinkOFF){
+  Serial.println("Cabel unpluged");
+}
 
   // start the ethernet connection and the server:
   // Use DHCP dynamic IP and random mac
