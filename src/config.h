@@ -1,6 +1,7 @@
 #if !defined(__ESPCONFIG__)
 #define __ESPCONFIG__
 #include "HardwareSerial.h"
+#define sw_version 20231207
 
 struct serialPins {
     gpio_num_t TXPIN;
@@ -25,6 +26,8 @@ struct MobileInternet {
 #define TXD_PIN_ClockMeh (GPIO_NUM_14)//UART for rs485 connections to clock mehanics
 #define RXD_PIN_Sim800 (GPIO_NUM_4)
 #define TXD_PIN_Sim800 (GPIO_NUM_16)
+#define ETH_CS (GPIO_NUM_5)//  spi cs pin  5
+#define ETH_RST_PIN (GPIO_NUM_22) //hardware RESET should be held low at least 500 us for W5500
 
 
 #define UARTtimeout 200 //time out of uart response in ms
