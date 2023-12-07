@@ -1,0 +1,21 @@
+Esp 32 to server API
+
+Struct:
+{
+“SerialNumber”:”Serial number of clock station”,
+"ClockSystem":"ClockSystem Number",
+"SW_Version":"Program version of ESP32",
+"Model":"MOdel name of clock station",
+SimNumber
+GPS_SN
+LAN_IP
+WiFi_IP
+MAC_LAN
+MAC_WiFi
+SSID
+GPS_Coordinates
+Warranty
+
+}
+Message 
+On connect:

@@ -6,7 +6,7 @@
 // #define ETH_IRQ          4
 // #define ETH_RST          22
 
-#define ETH_CS          5
+
 // SPI pins
 // #define ETH_SPI_SCK     18
 // #define ETH_SPI_MISO    19
@@ -19,6 +19,7 @@
 #include <WiFiClient.h>
 #include <Update.h>
 #include <WebServer.h>
+#include <BluetoothSerial.h>
 
 #include "Func.h"
 #include <string>
@@ -27,7 +28,7 @@
 #include <EthernetClient.h>
 
 static bool eth_connected = false;
-
+BluetoothSerial BTSerial;
 
 char serverURL[] = "arduino.tips";
 
@@ -48,9 +49,6 @@ serialPins clockMehanics;
 serialPins sim800;
 
 MobileInternet megafon;
-
-
-
 
 
 std::string TestData = "";
@@ -109,6 +107,7 @@ void printoutData()
 
 static uint8_t sizeOfAnsver = 0;
 void setup() {
+BTSerial.begin("CS-BK - xxxxxxTest");
 Serial.begin(115200); 
 Serial.println("Starting Setup stage");
 
@@ -192,6 +191,7 @@ if(link == LinkOFF){
   }
   Serial.println(WiFi.localIP());
   Serial.println(WiFi.RSSI());
+  Serial.println(WiFi.macAddress());
 
 
   server.on("/serverIndex", HTTP_GET, []() {

@@ -13,7 +13,7 @@ uint8_t calculateLenOfParams(const unsigned char * params, const uint8_t paramsL
 
 
 
-unsigned char * buildCMD(const unsigned char *cmd, unsigned char *parametrs, const unsigned char *startOfCommand, uint8_t sclen, const unsigned char *endC, uint8_t endCL){
+unsigned char * buildCMD(const unsigned char *cmd, const unsigned char *startOfCommand, unsigned char *parametrs,  uint8_t sclen, const unsigned char *endC, uint8_t endCL){
 
     uint8_t cmdLen = cmd[0];
     uint8_t parametrsLenCorrection = calculateLenOfParams(parametrs,cmdLen - 1);

@@ -446,7 +446,7 @@ static unsigned char ParametrsCMD[10]={0};
 // @param cmdLen длина массива байт команды, для подсчёта использовать calculateLenOfCommand()
 // @param endC указатель на массив байт окончания команды
 // @param endCL длина массива окончания команды
-unsigned char * buildCMD(const unsigned char *cmd = ReadParametrsCMD, unsigned char *parametrs = ParametrsCMD, const unsigned char *startOfCommand = StartCMD, uint8_t sclen = startCMDLen, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
+unsigned char * buildCMD(const unsigned char *cmd = ReadParametrsCMD, const unsigned char *startOfCommand = StartCMD, unsigned char *parametrs = ParametrsCMD,  uint8_t sclen = startCMDLen, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
 
 
 // @todo функция switch casе выбора команды
