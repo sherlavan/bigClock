@@ -3,8 +3,8 @@
 #include <sstream>
 #include <iomanip>
 #include <HardwareSerial.h>
-#include <WiFi.h>
-#include <ETH.h>
+// #include <WiFi.h>
+// #include <ETH.h>
 
 //освобождаем rx buff
 void serialFlush(HardwareSerial & port);
