@@ -1,7 +1,7 @@
 #if !defined(__ESPCONFIG__)
 #define __ESPCONFIG__
-#include "HardwareSerial.h"
-#define sw_version 20231207
+
+#define sw_version 20231210
 
 struct serialPins {
     gpio_num_t TXPIN;
@@ -16,7 +16,6 @@ struct MobileInternet {
     const char *USR;
     const char *PAS;
 } mobInet_settings;
-
 
 #define TXD_PIN_ClockStation (GPIO_NUM_32) //GPIO_NUM_2
 #define RXD_PIN_ClockStation (GPIO_NUM_33) //GPIO_NUM_4
@@ -36,13 +35,11 @@ static bool csUartTimeOut = false;
 static bool cmUartTimeOut = false;
 
 
+
 //wifi settings
 const char* host = "ClockStation";
 const char* ssid = "wifi";
 const char* Wpass = "F31wv32P";
-
-
-
 
 
 #if !( defined( ESP32 ) || defined(ESP8266) )
