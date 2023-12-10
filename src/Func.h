@@ -3,6 +3,8 @@
 #include <sstream>
 #include <iomanip>
 #include <HardwareSerial.h>
+#include <WiFi.h>
+#include <ETH.h>
 
 //освобождаем rx buff
 void serialFlush(HardwareSerial & port);
@@ -20,8 +22,6 @@ std::string hexStr(unsigned char* data, int len);
 // @param answer  массив байт ответа
 // @param TimeOut время ожидания ответа в мс
 static bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsigned char * answer, unsigned int TimeOut = 100); 
-
-
 
 
 

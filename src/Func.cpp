@@ -1,6 +1,5 @@
 #include "Func.h"
-#include <WiFi.h>
-#include <ETH.h>
+
 
 void serialFlush(HardwareSerial & port){
   while(port.available() > 0) {
@@ -17,6 +16,8 @@ std::string hexStr(unsigned char* data, int len)
     return ss.str();
 }
 
+//Read data from @port serial until @Terminator char to answer 
+//return True if timeout, False if terminator found
 static bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsigned char * answer, unsigned int TimeOut){
 
     unsigned char answerLen = 0;

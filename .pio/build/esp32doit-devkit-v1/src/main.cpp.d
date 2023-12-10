@@ -227,4 +227,5 @@
  C:/Users/sherla/.platformio/packages/framework-arduinoespressif32/libraries/BluetoothSerial/src/BTAddress.h \
  C:/Users/sherla/.platformio/packages/framework-arduinoespressif32/libraries/BluetoothSerial/src/BTAdvertisedDevice.h \
  src/Func.h \
+ C:/Users/sherla/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src/ETH.h \
  .pio/libdeps/esp32doit-devkit-v1/Ethernet_Generic/src/EthernetClient.h

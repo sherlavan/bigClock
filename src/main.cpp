@@ -1,16 +1,3 @@
-// #define CONFIG_ETH_SPI_ETHERNET_W5500 1
-// #define ETH_TYPE        ETH_PHY_W5500
-// #define ETH_PHY_SPI_HOST    SPI2_HOST
-// #define ETH_ADDR         1
-
-// #define ETH_IRQ          4
-// #define ETH_RST          22
-
-
-// SPI pins
-// #define ETH_SPI_SCK     18
-// #define ETH_SPI_MISO    19
-// #define ETH_SPI_MOSI    23
 
 #include "config.h"
 #include <inttypes.h>
@@ -20,6 +7,7 @@
 #include <Update.h>
 #include <WebServer.h>
 #include <BluetoothSerial.h>
+
 
 #include "Func.h"
 #include <string>
@@ -44,11 +32,29 @@ WebServer server(80);
 
 uint32_t lastTcpPublishTime = 0;
 uint8_t buffer[512];
+
 serialPins clockStation;
 serialPins clockMehanics;
 serialPins sim800;
 
 MobileInternet megafon;
+
+megafon.APN = "internet";
+megafon.USR = "gdata";
+megafon.PAS = "gdata";
+
+clockStation.TXPIN = TXD_PIN_ClockStation;
+clockStation.RXPIN = RXD_PIN_ClockStation;
+clockStation.baud = 57600;
+clockStation.config = SERIAL_8N1;
+
+clockMehanics.TXPIN = TXD_PIN_ClockMeh;
+clockMehanics.RXPIN = RXD_PIN_ClockMeh;
+clockMehanics.baud = 9600;
+clockMehanics.config = SERIAL_8N1;
+
+sim800.TXPIN = TXD_PIN_Sim800;
+sim800.RXPIN = RXD_PIN_Sim800;
 
 
 std::string TestData = "";
@@ -159,22 +165,7 @@ if(link == LinkOFF){
 
   
 
-  megafon.APN = "internet";
-  megafon.USR = "gdata";
-  megafon.PAS = "gdata";
-
-  clockStation.TXPIN = TXD_PIN_ClockStation;
-  clockStation.RXPIN = RXD_PIN_ClockStation;
-  clockStation.baud = 57600;
-  clockStation.config = SERIAL_8N1;
-
-  clockMehanics.TXPIN = TXD_PIN_ClockMeh;
-  clockMehanics.RXPIN = RXD_PIN_ClockMeh;
-  clockMehanics.baud = 9600;
-  clockMehanics.config = SERIAL_8N1;
-
-  sim800.TXPIN = TXD_PIN_Sim800;
-  sim800.RXPIN = RXD_PIN_Sim800;
+ 
     
 
   pinMode(RS485_PIN_ClockMeh, OUTPUT);
