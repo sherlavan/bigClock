@@ -16,9 +16,8 @@ std::string hexStr(unsigned char* data, int len)
     return ss.str();
 }
 
-//Read data from @port serial until @Terminator char to answer 
-//return True if timeout, False if terminator found
-static bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsigned char * answer, unsigned int TimeOut){
+
+bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsigned char * answer, unsigned int TimeOut){
 
     unsigned char answerLen = 0;
     answer[0]=0;
@@ -28,10 +27,10 @@ static bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsig
     {
         if(port.available()>0){
             answerLen++;
+            answer[0]= answerLen;
             answer[answerLen]= port.read();
 
             if(answer[answerLen]==Terminator){
-                answer[0]= answerLen;
                 return false;
             }
         }

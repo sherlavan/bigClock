@@ -1,12 +1,13 @@
 
 #include "config.h"
-#include <inttypes.h>
+// #include <inttypes.h>
 #include "uartClockStationCommands.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <Update.h>
 #include <WebServer.h>
 #include <BluetoothSerial.h>
+#include <ArduinoJson.h>
 
 
 #include "Func.h"
@@ -19,12 +20,12 @@ static bool eth_connected = false;
 BluetoothSerial BTSerial;
 
 char serverURL[] = "arduino.tips";
+char sendBufer[1024];
 
 EthernetClient EClient;
 
 #define TCP_HOSTNAME           "192.168.88.24"
 #define TCP_PORT               9999
-
 
 WebServer server(80);
 // byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
@@ -33,31 +34,28 @@ WebServer server(80);
 uint32_t lastTcpPublishTime = 0;
 uint8_t buffer[512];
 
-serialPins clockStation;
-serialPins clockMehanics;
-serialPins sim800;
+const serialPins clockStation = {.TXPIN = TXD_PIN_ClockStation,
+                                  .RXPIN = RXD_PIN_ClockStation,
+                                  .baud = 57600,
+                                  .config = SERIAL_8N1};
 
-MobileInternet megafon;
+const serialPins clockMehanics = {.TXPIN = TXD_PIN_ClockMeh,
+                                  .RXPIN = RXD_PIN_ClockMeh,
+                                  .baud = 9600,
+                                  .config = SERIAL_8N1};
+                                  
+serialPins sim800 = {.TXPIN = TXD_PIN_Sim800,
+                      .RXPIN = RXD_PIN_Sim800};
 
-megafon.APN = "internet";
-megafon.USR = "gdata";
-megafon.PAS = "gdata";
+MobileInternet megafon = {.APN = "internet",
+                          .USR = "gdata",
+                          .PAS = "gdata",};
 
-clockStation.TXPIN = TXD_PIN_ClockStation;
-clockStation.RXPIN = RXD_PIN_ClockStation;
-clockStation.baud = 57600;
-clockStation.config = SERIAL_8N1;
-
-clockMehanics.TXPIN = TXD_PIN_ClockMeh;
-clockMehanics.RXPIN = RXD_PIN_ClockMeh;
-clockMehanics.baud = 9600;
-clockMehanics.config = SERIAL_8N1;
-
-sim800.TXPIN = TXD_PIN_Sim800;
-sim800.RXPIN = RXD_PIN_Sim800;
+void readBaseParameters(serialPins UARTDev, char * OutputStream);
 
 
 std::string TestData = "";
+
 
 const char* UpdatePage = 
 "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
@@ -113,112 +111,112 @@ void printoutData()
 
 static uint8_t sizeOfAnsver = 0;
 void setup() {
-BTSerial.begin("CS-BK - xxxxxxTest");
-Serial.begin(115200); 
-Serial.println("Starting Setup stage");
+  BTSerial.begin("CS-BK - xxxxxxTest");
+  Serial.begin(115200); 
+  Serial.println("Starting Setup stage");
 
-Ethernet.init (ETH_CS);
-EthernetLinkStatus link = Ethernet.linkStatus();
-if(link == Unknown){
-  Serial.println("Problem with eathernet module..., not initialized");
-}
-
-if(link == LinkOFF){
-  Serial.println("Cabel unpluged");
-}
-
-  // start the ethernet connection and the server:
-  // Use DHCP dynamic IP and random mac
-  uint16_t index = millis() % NUMBER_OF_MAC;
-  // Use Static IP
-  //Ethernet.begin(mac[index], ip);
-  Ethernet.begin(mac[index]);
-  Serial.print("Using mac: ");
-  for(int i =0;i<6;i++){
-    Serial.print(mac[index][i]);
-    Serial.print(":");
-  }
-  Serial.println();
-
-  Serial.print("Got IP address: ");
-  Serial.println(Ethernet.localIP());
-  Serial.print("Connection speed: ");
-  Serial.println(Ethernet.speedReport());
-  Serial.print(F(", Duplex: "));
-  Serial.println(Ethernet.duplexReport());
-  Serial.print(F(", Link status: "));
-  Serial.println(Ethernet.linkReport());
-
-  if (EClient.connect(serverURL, 80))
-  {
-    Serial.println(F("Connected to server"));
-    // Make a HTTP request
-    EClient.println(F("GET /asciilogo.txt HTTP/1.1"));
-    EClient.println(F("Host: arduino.tips"));
-    EClient.println(F("Connection: close"));
-    EClient.println();
-  }
-  else
-  {
-    Serial.println("Could not connect to given URL:");
+  Ethernet.init (ETH_CS);
+  EthernetLinkStatus link = Ethernet.linkStatus();
+  if(link == Unknown){
+    Serial.println("Problem with eathernet module..., not initialized");
   }
 
-  
+  if(link == LinkOFF){
+    Serial.println("Cabel unpluged");
+  }
 
- 
+    // start the ethernet connection and the server:
+    // Use DHCP dynamic IP and random mac
+    uint16_t index = millis() % NUMBER_OF_MAC;
+    // Use Static IP
+    //Ethernet.begin(mac[index], ip);
+    Ethernet.begin(mac[index]);
+    Serial.print("Using mac: ");
+    for(int i =0;i<6;i++){
+      Serial.print(mac[index][i]);
+      Serial.print(":");
+    }
+    Serial.println();
+
+    Serial.print("Got IP address: ");
+    Serial.println(Ethernet.localIP());
+    Serial.print("Connection speed: ");
+    Serial.println(Ethernet.speedReport());
+    Serial.print(F(", Duplex: "));
+    Serial.println(Ethernet.duplexReport());
+    Serial.print(F(", Link status: "));
+    Serial.println(Ethernet.linkReport());
+
+    if (EClient.connect(serverURL, 80))
+    {
+      Serial.println(F("Connected to server"));
+      // Make a HTTP request
+      EClient.println(F("GET /asciilogo.txt HTTP/1.1"));
+      EClient.println(F("Host: arduino.tips"));
+      EClient.println(F("Connection: close"));
+      EClient.println();
+    }
+    else
+    {
+      Serial.println("Could not connect to given URL:");
+    }
+
     
 
-  pinMode(RS485_PIN_ClockMeh, OUTPUT);
-  digitalWrite(RS485_PIN_ClockMeh, LOW);//set to recive 485 data
   
-  Serial1.setRxBufferSize(129);
+      
+
+    pinMode(RS485_PIN_ClockMeh, OUTPUT);
+    digitalWrite(RS485_PIN_ClockMeh, LOW);//set to recive 485 data
+    
+    Serial1.setRxBufferSize(129);
 
 
 
-  WiFi.begin(ssid, Wpass);
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.println(WiFi.status());
-    delay(100);
-  }
-  Serial.println(WiFi.localIP());
-  Serial.println(WiFi.RSSI());
-  Serial.println(WiFi.macAddress());
-
-
-  server.on("/serverIndex", HTTP_GET, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", UpdatePage);
-  });
-
- 
-
-  server.on("/update", HTTP_POST, []() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    ESP.restart();
-  }, []() {
-    HTTPUpload& upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-      Serial.println("Update FW is in progress...");
-      /* flashing firmware to ESP*/
-      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-        Update.printError(Serial);
-      }
-    } else if (upload.status == UPLOAD_FILE_END) {
-      if (Update.end(true)) { //true to set the size to the current progress
-        Serial.println("update finish, restarting..");
-      } else {
-        Update.printError(Serial);
-      }
+    WiFi.begin(ssid, Wpass);
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.println(WiFi.status());
+      delay(100);
     }
-  });
-  Serial.println("webserver settings done..");
-  server.begin();
-  Serial.println("webserver start..");
+    Serial.println(WiFi.localIP());
+    Serial.println(WiFi.RSSI());
+    Serial.println(WiFi.macAddress());
+
+
+    server.on("/serverIndex", HTTP_GET, []() {
+      server.sendHeader("Connection", "close");
+      server.send(200, "text/html", UpdatePage);
+    });
+
+  
+
+    server.on("/update", HTTP_POST, []() {
+      server.sendHeader("Connection", "close");
+      server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+      ESP.restart();
+    }, []() {
+      HTTPUpload& upload = server.upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+          Update.printError(Serial);
+        }
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        Serial.println("Update FW is in progress...");
+        /* flashing firmware to ESP*/
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+          Update.printError(Serial);
+        }
+      } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) { //true to set the size to the current progress
+          Serial.println("update finish, restarting..");
+        } else {
+          Update.printError(Serial);
+        }
+      }
+    });
+    Serial.println("webserver settings done..");
+    server.begin();
+    Serial.println("webserver start..");
 
 }
 
@@ -241,7 +239,7 @@ void loop() {
   server.handleClient();
   Serial.println("server Ready");
 
-  unsigned char *  command = buildCMD(ReadSerialNCMD, ParametrsCMD);
+  unsigned char *  command = buildCMD(ReadParametrsCMD, StartCMD, ParametrsCMD);
 
   uint8_t commandLen = command[0];
   uint8_t answerLen = command[commandLen-1];
@@ -346,8 +344,85 @@ void loop() {
     server.send(200, "text/html", TestData.c_str());
   });
 
-
+  readBaseParameters(clockStation, sendBufer);
+  
+  BTSerial.println(sendBufer);
 
   delay(5000);
 }
+// Functions block   vvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
+void readBaseParameters(serialPins UARTDev, char * OutputStream){
+    bool csUartTimeOut;
+    // prepeare command
+    unsigned char *  command = buildCMD(ReadModelCMD,StartCMD, ParametrsCMD);
+
+    uint8_t commandLen = command[0];
+    uint8_t answerLen = 254;
+
+    unsigned char * commandToSend = (unsigned char *) malloc(commandLen - 2);
+    for (uint8_t i = 0; i<commandLen - 2; i++){
+        commandToSend[i]=command[i+1];
+    }
+    //--prepeare
+    Serial.println( "cmd to clock  from func");
+    Serial.println(hexStr(commandToSend, commandLen - 2).c_str());
+
+    //def answer and make 0000
+    unsigned char * answerUART = (unsigned char *) malloc(255);
+    for (uint8_t i = 0;i<answerLen;i++){
+      answerUART[i]=0;
+    }
+
+    //start UART on needed pins
+    Serial1.begin(UARTDev.baud, UARTDev.config, UARTDev.RXPIN, UARTDev.TXPIN);
+    //clear buffer
+    serialFlush(Serial1);
+    csUartTimeOut = false;
+    Serial1.write(commandToSend, commandLen - 2);
+    unsigned long responseTime = millis();
+    //release mem
+    free(commandToSend);
+
+    while (Serial1.available()<6)
+    {
+      delay(1);
+      if ((millis() - responseTime)> UARTtimeout){
+        csUartTimeOut = true;
+        break;
+      }
+    }
+    responseTime = millis() - responseTime;
+    if(Serial1.available()>=6 and !csUartTimeOut)  {
+   
+      Serial1.readBytesUntil(0xfe, answerUART, answerLen);
+
+    }
+
+    // csUartTimeOut = readUartUntil(Serial1, 0xFE, answerUART);
+    //release UART
+    Serial1.end();
+    Serial.println(hexStr(answerUART, 250).c_str());
+    //if timeout return info
+
+    if (answerUART[0]>5) {
+      char chank[answerUART[0]-5];
+      memcpy(chank, answerUART + 3, 250);
+      chank[answerUART[0]-6] = 0;//0 terminate
+      Serial.println(chank);
+      StaticJsonDocument<300> answerJSON;
+      answerJSON["CSModel"] = chank;
+      answerJSON["Response"] = responseTime;
+      answerJSON["UARTCSTimeOut"] = csUartTimeOut;
+      serializeJson(answerJSON, OutputStream, chank[answerUART[0]-5]);
+      return;
+    }
+
+    
+    StaticJsonDocument<40> answerJSON;
+    answerJSON["UARTClockStation"] = "somthing went wrong!";
+    serializeJson(answerJSON, OutputStream, 40);
+    return;
+
+
+}

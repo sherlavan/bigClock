@@ -1,11 +1,14 @@
+#pragma once
 #if !defined(__ESPCONFIG__)
 #define __ESPCONFIG__
+#include <inttypes.h>
+// #include <HardwareSerial.h>
 
-#define sw_version 20231210
+#define sw_version 20231211
 
 struct serialPins {
-    gpio_num_t TXPIN;
-    gpio_num_t RXPIN;
+    uint32_t TXPIN;
+    uint32_t RXPIN;
     unsigned long baud;
     uint32_t config; 
 
