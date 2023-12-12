@@ -6,8 +6,9 @@
 #define UART_COMMANDS_CONSTANTS_H
 
 #include <inttypes.h>
-#include "string.h"
-#include <map>
+#include <stdlib.h>
+// #include "string.h"
+
 // using namespace std;
 
 
@@ -454,39 +455,6 @@ unsigned char * buildCMD(const unsigned char *cmd = ReadParametrsCMD, const unsi
 
 // функция switch casе выбора команды
 
-std::map<String, const unsigned char* > commandArray = {
-    {"MelodyTest", MelodyTestCMD},
-    {"ChimesTest", ChimesTestCMD},
-    {"ReadParametrs", ReadParametrsCMD},
-    {"ReadImpulse", ReadImpulseCMD},
-    {"ReadGlonas", ReadGlonasCMD},
-    {"ReadDayCorrection", ReadDayCorrectionCMD},
-    {"WriteTimeInChannel", WriteTimeInChannelCMD},
-    {"WriteImpulse",WriteImpulseCMD},
-    {"WriteImpulseDurationInChannel", WriteImpulseDurationInChannelCMD},
-    {"WriteDateTime", WriteDateTimeCMD},
-    {"WriteDayCorrection", WriteDayCorrectionCMD},
-    {"WriteTimeZone", WriteTimeZoneCMD},
-    {"ReadReleyState", ReadReleyStateCMD},
-    {"ReadAstronomicReley", ReadAstronomicReleyCMD},
-    {"WriteReley", WriteReleyCMD},
-    {"WriteAstronomicReley", WriteAstronomicReleyCMD},
-    {"WriteCoordinates", WriteCoordinatesCMD},
-    {"ReadModel", ReadModelCMD},
-    {"ReadVersion", ReadVersionCMD},
-    {"ReadSerialN", ReadSerialNCMD},
-    {"ReadCSN", ReadCSNCMD},
-    {"ReadWarranty", ReadWarrantyCMD},
-    {"WriteSerialN", WriteSerialNCMD},
-    {"WriteCSN", WriteCSNCMD},
-    {"WriteWarranty", WriteWarrantyCMD},
-    {"ReadDemo", ReadDemoCMD},
-    {"WriteDemo", WriteDemoCMD},
-    {"ReadChimes", ReadChimesCMD},
-    {"WriteChimesTime", WriteChimesTimeCMD},
-    {"WriteChimes", WriteChimesCMD},
-    {"WriteChimesVolume", WriteChimesVolumeCMD}
 
-};
 
 #endif

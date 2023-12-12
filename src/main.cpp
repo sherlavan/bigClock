@@ -10,6 +10,7 @@
 #include <ArduinoJson.h>
 #include "Func.h"
 #include <string>
+#include <map>
 // #include <SPI.h>
 // #include <Arduino.h>
 #include <EthernetClient.h>
@@ -46,6 +47,41 @@ const char version[6+1] =
 const int sw_version = atoi(version);
 
 // #define sw_version 20231211
+
+std::map<std::string, const unsigned char* > commandArray = {
+    {"MelodyTest", MelodyTestCMD},
+    {"ChimesTest", ChimesTestCMD},
+    {"ReadParametrs", ReadParametrsCMD},
+    {"ReadImpulse", ReadImpulseCMD},
+    {"ReadGlonas", ReadGlonasCMD},
+    {"ReadDayCorrection", ReadDayCorrectionCMD},
+    {"WriteTimeInChannel", WriteTimeInChannelCMD},
+    {"WriteImpulse",WriteImpulseCMD},
+    {"WriteImpulseDurationInChannel", WriteImpulseDurationInChannelCMD},
+    {"WriteDateTime", WriteDateTimeCMD},
+    {"WriteDayCorrection", WriteDayCorrectionCMD},
+    {"WriteTimeZone", WriteTimeZoneCMD},
+    {"ReadReleyState", ReadReleyStateCMD},
+    {"ReadAstronomicReley", ReadAstronomicReleyCMD},
+    {"WriteReley", WriteReleyCMD},
+    {"WriteAstronomicReley", WriteAstronomicReleyCMD},
+    {"WriteCoordinates", WriteCoordinatesCMD},
+    {"ReadModel", ReadModelCMD},
+    {"ReadVersion", ReadVersionCMD},
+    {"ReadSerialN", ReadSerialNCMD},
+    {"ReadCSN", ReadCSNCMD},
+    {"ReadWarranty", ReadWarrantyCMD},
+    {"WriteSerialN", WriteSerialNCMD},
+    {"WriteCSN", WriteCSNCMD},
+    {"WriteWarranty", WriteWarrantyCMD},
+    {"ReadDemo", ReadDemoCMD},
+    {"WriteDemo", WriteDemoCMD},
+    {"ReadChimes", ReadChimesCMD},
+    {"WriteChimesTime", WriteChimesTimeCMD},
+    {"WriteChimes", WriteChimesCMD},
+    {"WriteChimesVolume", WriteChimesVolumeCMD}
+
+};
 
 static bool eth_connected = false;
 BluetoothSerial BTSerial;
