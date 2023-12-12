@@ -7,7 +7,10 @@
 
 #include <inttypes.h>
 #include "string.h"
+#include <map>
 // using namespace std;
+
+
 
 //Команды имеют формат {длина команды; CMD; Дина ответа без начала, конца и контрольной суммы (5)}
 //т.е. ответ 0 - 10 01 55 10 FE
@@ -449,6 +452,41 @@ static unsigned char ParametrsCMD[10]={0};
 unsigned char * buildCMD(const unsigned char *cmd = ReadParametrsCMD, const unsigned char *startOfCommand = StartCMD, unsigned char *parametrs = ParametrsCMD,  uint8_t sclen = startCMDLen, const unsigned char *endC = endOfCMD, uint8_t endCL = endOfCMDLen);
 
 
-// @todo функция switch casе выбора команды
+// функция switch casе выбора команды
+
+std::map<String, const unsigned char* > commandArray = {
+    {"MelodyTest", MelodyTestCMD},
+    {"ChimesTest", ChimesTestCMD},
+    {"ReadParametrs", ReadParametrsCMD},
+    {"ReadImpulse", ReadImpulseCMD},
+    {"ReadGlonas", ReadGlonasCMD},
+    {"ReadDayCorrection", ReadDayCorrectionCMD},
+    {"WriteTimeInChannel", WriteTimeInChannelCMD},
+    {"WriteImpulse",WriteImpulseCMD},
+    {"WriteImpulseDurationInChannel", WriteImpulseDurationInChannelCMD},
+    {"WriteDateTime", WriteDateTimeCMD},
+    {"WriteDayCorrection", WriteDayCorrectionCMD},
+    {"WriteTimeZone", WriteTimeZoneCMD},
+    {"ReadReleyState", ReadReleyStateCMD},
+    {"ReadAstronomicReley", ReadAstronomicReleyCMD},
+    {"WriteReley", WriteReleyCMD},
+    {"WriteAstronomicReley", WriteAstronomicReleyCMD},
+    {"WriteCoordinates", WriteCoordinatesCMD},
+    {"ReadModel", ReadModelCMD},
+    {"ReadVersion", ReadVersionCMD},
+    {"ReadSerialN", ReadSerialNCMD},
+    {"ReadCSN", ReadCSNCMD},
+    {"ReadWarranty", ReadWarrantyCMD},
+    {"WriteSerialN", WriteSerialNCMD},
+    {"WriteCSN", WriteCSNCMD},
+    {"WriteWarranty", WriteWarrantyCMD},
+    {"ReadDemo", ReadDemoCMD},
+    {"WriteDemo", WriteDemoCMD},
+    {"ReadChimes", ReadChimesCMD},
+    {"WriteChimesTime", WriteChimesTimeCMD},
+    {"WriteChimes", WriteChimesCMD},
+    {"WriteChimesVolume", WriteChimesVolumeCMD}
+
+};
 
 #endif

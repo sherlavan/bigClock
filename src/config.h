@@ -4,7 +4,7 @@
 #include <inttypes.h>
 // #include <HardwareSerial.h>
 
-#define sw_version 20231211
+
 
 struct serialPins {
     uint32_t TXPIN;

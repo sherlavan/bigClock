@@ -8,13 +8,44 @@
 #include <WebServer.h>
 #include <BluetoothSerial.h>
 #include <ArduinoJson.h>
-
-
 #include "Func.h"
 #include <string>
 // #include <SPI.h>
 // #include <Arduino.h>
 #include <EthernetClient.h>
+
+const char version[6+1] =
+{
+   // YY year
+   __DATE__[9], __DATE__[10],
+
+   // First month letter, Oct Nov Dec = '1' otherwise '0'
+   (__DATE__[0] == 'O' || __DATE__[0] == 'N' || __DATE__[0] == 'D') ? '1' : '0',
+   
+   // Second month letter
+   (__DATE__[0] == 'J') ? ( (__DATE__[1] == 'a') ? '1' :       // Jan, Jun or Jul
+                            ((__DATE__[2] == 'n') ? '6' : '7') ) :
+   (__DATE__[0] == 'F') ? '2' :                                // Feb 
+   (__DATE__[0] == 'M') ? (__DATE__[2] == 'r') ? '3' : '5' :   // Mar or May
+   (__DATE__[0] == 'A') ? (__DATE__[1] == 'p') ? '4' : '8' :   // Apr or Aug
+   (__DATE__[0] == 'S') ? '9' :                                // Sep
+   (__DATE__[0] == 'O') ? '0' :                                // Oct
+   (__DATE__[0] == 'N') ? '1' :                                // Nov
+   (__DATE__[0] == 'D') ? '2' :                                // Dec
+   0,
+
+   // First day letter, replace space with digit
+   __DATE__[4]==' ' ? '0' : __DATE__[4],
+
+   // Second day letter
+   __DATE__[5],
+
+  '\0'
+};
+
+const int sw_version = atoi(version);
+
+// #define sw_version 20231211
 
 static bool eth_connected = false;
 BluetoothSerial BTSerial;
@@ -380,9 +411,10 @@ void readBaseParameters(serialPins UARTDev, char * OutputStream){
     serialFlush(Serial1);
     csUartTimeOut = false;
     Serial1.write(commandToSend, commandLen - 2);
-    unsigned long responseTime = millis();
     //release mem
     free(commandToSend);
+    //reset response timer
+    unsigned long responseTime = millis();
 
     while (Serial1.available()<6)
     {
@@ -413,15 +445,19 @@ void readBaseParameters(serialPins UARTDev, char * OutputStream){
       StaticJsonDocument<300> answerJSON;
       answerJSON["CSModel"] = chank;
       answerJSON["Response"] = responseTime;
-      answerJSON["UARTCSTimeOut"] = csUartTimeOut;
-      serializeJson(answerJSON, OutputStream, chank[answerUART[0]-5]);
+      answerJSON["UARTCSTimeOut"] = (csUartTimeOut)?1:0;
+      serializeJson(answerJSON, OutputStream, 300);
       return;
     }
 
     
-    StaticJsonDocument<40> answerJSON;
-    answerJSON["UARTClockStation"] = "somthing went wrong!";
-    serializeJson(answerJSON, OutputStream, 40);
+    StaticJsonDocument<200> answerJSON;
+    answerJSON["Error"] = "UART answer is less then 6 byte!";
+    answerJSON["Response"] = hexStr(answerUART, 99).c_str();
+    answerJSON["UARTCSTimeOut"] = (csUartTimeOut)?1:0;
+
+
+    serializeJson(answerJSON, OutputStream, 200);
     return;
 
 
