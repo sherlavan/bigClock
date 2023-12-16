@@ -440,6 +440,8 @@ static const unsigned char MelodyTestCMD[] = {1, 0x20, 5};
 // @param cmdLen длина массива
 uint8_t calculateLenOfParams(const unsigned char * params, const uint8_t cmdLen);
 
+
+//переменная хранит параметры запроса, 0й элемент должна быть длина массива
 static unsigned char ParametrsCMD[10]={0};
 
 

@@ -37,6 +37,8 @@ struct MobileInternet {
 static bool csUartTimeOut = false;
 static bool cmUartTimeOut = false;
 
+#define TCP_HOSTNAME           "192.168.88.24"
+#define TCP_PORT               9999
 
 
 //wifi settings

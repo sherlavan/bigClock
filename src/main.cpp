@@ -1,6 +1,5 @@
-
+#define ARDUINOJSON_DECODE_UNICODE 0
 #include "config.h"
-// #include <inttypes.h>
 #include "uartClockStationCommands.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -11,9 +10,9 @@
 #include "Func.h"
 #include <string>
 #include <map>
-// #include <SPI.h>
-// #include <Arduino.h>
 #include <EthernetClient.h>
+
+//#########################################   Constant block  ###############################
 
 const char version[6+1] =
 {
@@ -46,9 +45,26 @@ const char version[6+1] =
 
 const int sw_version = atoi(version);
 
-// #define sw_version 20231211
+const serialPins clockStation = {.TXPIN = TXD_PIN_ClockStation,
+                                  .RXPIN = RXD_PIN_ClockStation,
+                                  .baud = 57600,
+                                  .config = SERIAL_8N1};
 
-std::map<std::string, const unsigned char* > commandArray = {
+const serialPins clockMehanics = {.TXPIN = TXD_PIN_ClockMeh,
+                                  .RXPIN = RXD_PIN_ClockMeh,
+                                  .baud = 9600,
+                                  .config = SERIAL_8N1};
+                                  
+const serialPins sim800 = {.TXPIN = TXD_PIN_Sim800,
+                      .RXPIN = RXD_PIN_Sim800};
+
+MobileInternet megafon = {.APN = "internet",
+                          .USR = "gdata",
+                          .PAS = "gdata",};
+
+
+//dictionary  of commands and devices
+std::map<std::string, const unsigned char* > commandsToClockStationArray = {
     {"MelodyTest", MelodyTestCMD},
     {"ChimesTest", ChimesTestCMD},
     {"ReadParametrs", ReadParametrsCMD},
@@ -83,66 +99,41 @@ std::map<std::string, const unsigned char* > commandArray = {
 
 };
 
-static bool eth_connected = false;
-BluetoothSerial BTSerial;
-
-char serverURL[] = "arduino.tips";
-char sendBufer[1024];
-
-EthernetClient EClient;
-
-#define TCP_HOSTNAME           "192.168.88.24"
-#define TCP_PORT               9999
-
-WebServer server(80);
-// byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+std::map<std::string, const serialPins& > deviceArray = {
+  {"ClockStation", clockStation},
+  {"ClockMehanics", clockMehanics},
+  {"Sim", sim800} //check if needed
+};
 
 
-uint32_t lastTcpPublishTime = 0;
-uint8_t buffer[512];
-
-const serialPins clockStation = {.TXPIN = TXD_PIN_ClockStation,
-                                  .RXPIN = RXD_PIN_ClockStation,
-                                  .baud = 57600,
-                                  .config = SERIAL_8N1};
-
-const serialPins clockMehanics = {.TXPIN = TXD_PIN_ClockMeh,
-                                  .RXPIN = RXD_PIN_ClockMeh,
-                                  .baud = 9600,
-                                  .config = SERIAL_8N1};
-                                  
-serialPins sim800 = {.TXPIN = TXD_PIN_Sim800,
-                      .RXPIN = RXD_PIN_Sim800};
-
-MobileInternet megafon = {.APN = "internet",
-                          .USR = "gdata",
-                          .PAS = "gdata",};
-
-void readBaseParameters(serialPins UARTDev, char * OutputStream);
-
-
+//#################################3 varables   ################################
 std::string TestData = "";
 
+bool eth_connected = false;
+bool BTClientConnected = false;
+char serverURL[] = "arduino.tips";
+char BTsendBufer[1024];
+String BTreciveBufer;
 
+
+BluetoothSerial BTSerial;
+EthernetClient EClient;
+WebServer server(80);
+
+
+//############################## html block  ####################################
 const char* UpdatePage = 
 "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
 "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-   "<input type='file' name='update'>"
-        "<input type='submit' value='Update'>"
-    "</form>"
- "<div id='prg'>progress: 0%</div>"
- "<script>"
-  "$('form').submit(function(e){"
-  "e.preventDefault();"
+  "<input type='file' name='update'>"
+  "<input type='submit' value='Update'>"
+"</form>"
+"<div id='prg'>progress: 0%</div>"
+"<script>"
+  "$('form').submit(function(e){e.preventDefault();"
   "var form = $('#upload_form')[0];"
   "var data = new FormData(form);"
-  " $.ajax({"
-  "url: '/update',"
-  "type: 'POST',"
-  "data: data,"
-  "contentType: false,"
-  "processData:false,"
-  "xhr: function() {"
+  "$.ajax({url: '/update', type: 'POST', data: data, contentType: false, processData:false, xhr: function() {"
   "var xhr = new window.XMLHttpRequest();"
   "xhr.upload.addEventListener('progress', function(evt) {"
   "if (evt.lengthComputable) {"
@@ -159,7 +150,11 @@ const char* UpdatePage =
  "}"
  "});"
  "});"
- "</script>";
+"</script>";
+
+
+//#####################################  Function block   ################################################### 
+void queryModule(serialPins UARTDev,const unsigned char* command, char * OutputStream);
 
 void printoutData()
 {
@@ -173,12 +168,24 @@ void printoutData()
   }
 }
 
+void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
+  if(event == ESP_SPP_SRV_OPEN_EVT){
+    BTClientConnected = true;
+    Serial.println("Client Connected to Bluetooth");
+  }
+  if(event == ESP_SPP_SRV_STOP_EVT){
+    BTClientConnected = false;
+    Serial.println("Client Disconnected from Bluetooth");
+  }
+}
+
+void handleBTRequest();
 
 
-
-static uint8_t sizeOfAnsver = 0;
+//################################ setup block   #####################################################
 void setup() {
   BTSerial.begin("CS-BK - xxxxxxTest");
+  BTSerial.register_callback(BTCheckClientConnection);
   Serial.begin(115200); 
   Serial.println("Starting Setup stage");
 
@@ -228,16 +235,11 @@ void setup() {
       Serial.println("Could not connect to given URL:");
     }
 
-    
-
-  
-      
 
     pinMode(RS485_PIN_ClockMeh, OUTPUT);
     digitalWrite(RS485_PIN_ClockMeh, LOW);//set to recive 485 data
     
     Serial1.setRxBufferSize(129);
-
 
 
     WiFi.begin(ssid, Wpass);
@@ -287,7 +289,7 @@ void setup() {
 
 }
 
-///repo test
+
 
 
 void loop() {
@@ -411,21 +413,30 @@ void loop() {
     server.send(200, "text/html", TestData.c_str());
   });
 
-  readBaseParameters(clockStation, sendBufer);
+  queryModule(clockStation,ReadModelCMD, BTsendBufer);
   
-  BTSerial.println(sendBufer);
+  BTSerial.println(BTsendBufer);
+  Serial.print("Uptime: ");
+  Serial.println(millis());
 
   delay(5000);
 }
 // Functions block   vvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-void readBaseParameters(serialPins UARTDev, char * OutputStream){
+void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * OutputStream){
     bool csUartTimeOut;
     // prepeare command
-    unsigned char *  command = buildCMD(ReadModelCMD,StartCMD, ParametrsCMD);
+    unsigned char *  command = buildCMD(sendCommand, StartCMD, ParametrsCMD);
 
     uint8_t commandLen = command[0];
-    uint8_t answerLen = 254;
+    uint8_t answerLen;
+    if(command[commandLen-1] == 0){
+      answerLen = 100;
+    }
+    else{
+      answerLen = command[commandLen-1];
+    }
+        
 
     unsigned char * commandToSend = (unsigned char *) malloc(commandLen - 2);
     for (uint8_t i = 0; i<commandLen - 2; i++){
@@ -436,7 +447,7 @@ void readBaseParameters(serialPins UARTDev, char * OutputStream){
     Serial.println(hexStr(commandToSend, commandLen - 2).c_str());
 
     //def answer and make 0000
-    unsigned char * answerUART = (unsigned char *) malloc(255);
+    unsigned char * answerUART = (unsigned char *) malloc(answerLen + 1);
     for (uint8_t i = 0;i<answerLen;i++){
       answerUART[i]=0;
     }
@@ -460,41 +471,58 @@ void readBaseParameters(serialPins UARTDev, char * OutputStream){
         break;
       }
     }
-    responseTime = millis() - responseTime;
+    
     if(Serial1.available()>=6 and !csUartTimeOut)  {
    
       Serial1.readBytesUntil(0xfe, answerUART, answerLen);
 
     }
+    responseTime = millis() - responseTime;
 
     // csUartTimeOut = readUartUntil(Serial1, 0xFE, answerUART);
     //release UART
     Serial1.end();
-    Serial.println(hexStr(answerUART, 250).c_str());
+    Serial.println(hexStr(answerUART, answerLen).c_str());
     //if timeout return info
 
     if (answerUART[0]>5) {
-      char chank[answerUART[0]-5];
-      memcpy(chank, answerUART + 3, 250);
-      chank[answerUART[0]-6] = 0;//0 terminate
+      char chank[answerLen-5];
+      memcpy(chank, answerUART + 3, answerLen-5);
+      chank[answerLen-6] = 0;//0 terminate
       Serial.println(chank);
       StaticJsonDocument<300> answerJSON;
       answerJSON["CSModel"] = chank;
       answerJSON["Response"] = responseTime;
       answerJSON["UARTCSTimeOut"] = (csUartTimeOut)?1:0;
       serializeJson(answerJSON, OutputStream, 300);
+      Serial.println("test send done?");
       return;
     }
 
     
     StaticJsonDocument<200> answerJSON;
     answerJSON["Error"] = "UART answer is less then 6 byte!";
-    answerJSON["Response"] = hexStr(answerUART, 99).c_str();
+    answerJSON["Device"] = "DeviceVar here";
+    answerJSON["Command"] = "CommandVar here";
+    answerJSON.createNestedArray("Params");
+    for(int i=0;i<ParametrsCMD[0];i++){
+      answerJSON["Params"].add(ParametrsCMD[i+1]);
+    }
+    answerJSON["Response"] = hexStr(answerUART, answerLen).c_str();
     answerJSON["UARTCSTimeOut"] = (csUartTimeOut)?1:0;
-
 
     serializeJson(answerJSON, OutputStream, 200);
     return;
 
 
+}
+
+void handleBTRequest(){
+    if(!BTClientConnected){
+      return;
+    }
+    if(BTSerial.available()>20){//wait JSON string
+      BTreciveBufer = BTSerial.readString();
+    }
+  return;
 }
