@@ -16,6 +16,7 @@ void serialFlush(HardwareSerial & port);
 //@param data ссылка на массив байт
 //@param len длина массива
 std::string hexStr(unsigned char* data, int len);
+std::string hexStr(const unsigned char* data, int len);
 
 
 //читает ответ из port до Terminator в answer массив байт и в answerLen длину массива
@@ -25,7 +26,7 @@ std::string hexStr(unsigned char* data, int len);
 // @param Terminator байт окончания
 // @param answer  массив байт ответа
 // @param TimeOut время ожидания ответа в мс
-bool readUartUntil(HardwareSerial & port, unsigned char Terminator, unsigned char * answer, unsigned int TimeOut = 100); 
+bool readUartUntil(HardwareSerial & port, unsigned char * answer, unsigned int TimeOut = 100); 
 
 
 
