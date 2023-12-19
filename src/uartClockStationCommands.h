@@ -287,7 +287,7 @@ static const unsigned char ReadVersionCMD[] = {1, 0x12, 0};
 // ADR – адрес ЧС; CMD – 0x13
 // CS = 0x55^ADR^CMD
 // Ответ: 0x10 ADR Строка с серийным номером CS 0x10 0xFE
-static const unsigned char ReadSerialNCMD[] = {1, 0x13, 10};//10 - checkout
+static const unsigned char ReadSerialNCMD[] = {1, 0x13, 0};//0 - string
 
 
 // КОМАНДА ЧТЕНИЯ НОМЕРА ЧАСОВОЙ СИСТЕМЫ

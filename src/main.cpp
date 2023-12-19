@@ -100,12 +100,11 @@ std::map<std::string, const unsigned char* > commandsToClockStationArray = {
 
 };
 
-//NOt working :(
-// std::map<const char*, const serialPins> deviceArray = {
-//   {"ClockStation", clockStation},
-//   {"ClockMehanics", clockMehanics},
-//   {"Sim", sim800} //check if needed
-// };
+std::map<std::string, const serialPins*> deviceArray = {
+  {"ClockStation", &clockStation},
+  {"ClockMehanics", &clockMehanics},
+  {"Sim", &sim800} //check if needed
+};
 
 
 //#################################3 varables   ################################
@@ -186,16 +185,26 @@ void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param
 }
 
 void handleBTRequest();
+const char * getModel();
+const char * getSerialCS();
 
 
 //################################ setup block   #####################################################
 void setup() {
 
-  BTSerial.begin("CS-BK - xxxxxxTest");
-  BTSerial.register_callback(BTCheckClientConnection);
+
   Serial.begin(115200); 
   Serial.println("Starting Setup stage");
 
+  const char * csmodel = getModel();
+  String btname = csmodel;
+  const char * csserial = getSerialCS();
+  // Serial.println(csserial);
+  btname += " - ";
+  btname += csserial;
+  Serial.println(btname);
+  BTSerial.begin(btname);
+  BTSerial.register_callback(BTCheckClientConnection);
   Ethernet.init (ETH_CS);
   EthernetLinkStatus link = Ethernet.linkStatus();
   if(link == Unknown){
@@ -295,59 +304,6 @@ void setup() {
     server.begin();
     Serial.println("webserver start..");
 
-  unsigned char *  command = buildCMD(ReadParametrsCMD, StartCMD, ParametrsCMD);
-
-  uint8_t commandLen = command[0];
-  uint8_t answerLen = command[commandLen-1];
-  unsigned char * commandToSend = (unsigned char *) malloc(commandLen - 2);
-  for (uint8_t i = 0; i<commandLen - 2; i++){
-    commandToSend[i]=command[i+1];
-  
-  }
-
-  csUartTimeOut = false;
-  
-  Serial1.begin(clockStation.baud, clockStation.config, clockStation.RXPIN, clockStation.TXPIN);
-  Serial1.write(commandToSend, commandLen - 2);
-  unsigned long responseTime = millis();
-
-  free(commandToSend);
-  free(command);
-
-  unsigned char * answer = (unsigned char *) malloc(answerLen + 1);
-  for (uint8_t i = 0;i<answerLen;i++){
-    answer[i]=0;
-  }
-
-  while (Serial1.available()<answerLen)
-  {
-    delay(1);
-    if ((millis() - responseTime)> UARTtimeout){
-      csUartTimeOut = true;
-      break;
-    }
-  }
-  
-  if(Serial1.available()>=answerLen and !csUartTimeOut)  {
-   
-    Serial1.readBytesUntil(0xfe, answer, answerLen + 1);
-
-  }
-
-  Serial1.end();
-  TestData += "cs uart time out: ";
-  TestData += (csUartTimeOut ? "Yes\n" : "No\n");
-  TestData += "Answer from clock\n";
-  TestData += hexStr(answer, answerLen + 1);
-  TestData += "\n";
-  TestData += "Response Time: ";
-  TestData += millis() - responseTime;
-  TestData += "\n";
-
-
-  free (answer);
-
-  Serial.println(TestData.c_str());
 
 }
 
@@ -542,10 +498,11 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
 
     //release UART
     Serial1.end();
+    Serial.println("Answer from func");
     Serial.println(hexStr(answerUART, answerLen).c_str());
     //if timeout return info
 
-    if (answerUART[0]>5) {
+    if (answerUART[0]==0x10) {
       char chank[answerLen-5];
       memcpy(chank, answerUART + 3, answerLen-5);
       chank[answerLen-6] = 0;//0 terminate
@@ -561,7 +518,7 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
 
     
     StaticJsonDocument<200> answerJSON;
-    answerJSON["Error"] = "UART answer is less then 6 byte!";
+    answerJSON["Error"] = "UART answer is unknown!";
     answerJSON["Device"] = "DeviceVar here";
     answerJSON["Command"] = "CommandVar here";
     answerJSON.createNestedArray("Params");
@@ -584,16 +541,8 @@ void handleBTRequest(){
     const char * dev = queryJSON["Device"];
     const char * com = queryJSON["Command"];
     const serialPins * TDEV = NULL;
-  
-    if(strcmp(dev, "ClockStation")==0){
-      TDEV = &clockStation;
-    }
-    if(strcmp(dev, "ClockMehanics")==0){
-      TDEV = &clockMehanics;
-    }
-    if(strcmp(dev, "Sim")==0){
-      TDEV = &sim800;
-    }
+
+    TDEV = deviceArray[dev];
 
     const serialPins UDEV = *TDEV;
     const unsigned char* sCommand = commandsToClockStationArray[com];
@@ -611,4 +560,22 @@ void handleBTRequest(){
     BTreciveBufer = "";
 
   return;
+}
+
+
+const char * getModel(){
+
+  queryModule(clockStation, ReadModelCMD, BTsendBufer);
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
+}
+
+const char * getSerialCS(){
+  queryModule(clockStation, ReadSerialNCMD, BTsendBufer);
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
 }
