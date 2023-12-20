@@ -115,6 +115,7 @@ unsigned char * Params;
 
 
 bool eth_connected = false;
+bool eth_present = false;
 bool BTClientConnected = false;
 char serverURL[] = "arduino.tips";
 char BTsendBufer[1024];
@@ -160,7 +161,7 @@ const char* UpdatePage =
 
 //#####################################  Function block   ################################################### 
 void queryModule(serialPins UARTDev,const unsigned char* command, char * OutputStream);
-
+void prepareBaseData();
 void printoutData()
 {
   // if there are incoming bytes available
@@ -172,18 +173,7 @@ void printoutData()
     Serial.flush();
   }
 }
-
-void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
-  if(event == ESP_SPP_SRV_OPEN_EVT){
-    BTClientConnected = true;
-    Serial.println("Client Connected to Bluetooth");
-  }
-  if(event == ESP_SPP_SRV_STOP_EVT){
-    BTClientConnected = false;
-    Serial.println("Client Disconnected from Bluetooth");
-  }
-}
-
+void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 void handleBTRequest();
 const char * getModel();
 const char * getSerialCS();
@@ -191,29 +181,42 @@ const char * getSerialCS();
 
 //################################ setup block   #####################################################
 void setup() {
-
+  //first reset
+  pinMode(ETH_RST_PIN,OUTPUT);
+  digitalWrite(ETH_RST_PIN,0);
+  delay(1);
+  pinMode(ETH_RST_PIN,INPUT);
 
   Serial.begin(115200); 
   Serial.println("Starting Setup stage");
-
+  //======================bluetooth
   const char * csmodel = getModel();
   String btname = csmodel;
   const char * csserial = getSerialCS();
-  // Serial.println(csserial);
   btname += " - ";
   btname += csserial;
   Serial.println(btname);
   BTSerial.begin(btname);
   BTSerial.register_callback(BTCheckClientConnection);
+  ///===================================init eth with reset
+  Serial.println("Reseting Ethernet module, wait 3sec.");
+  
+  delay(5000);
+  Serial.println("Try to init Ethernet module");
   Ethernet.init (ETH_CS);
   EthernetLinkStatus link = Ethernet.linkStatus();
   if(link == Unknown){
-    Serial.println("Problem with eathernet module..., not initialized");
+    Serial.println("Problem with ethernet module..., not present?");
     eth_connected = false;
   }
 
   if(link == LinkOFF){
-    Serial.println("Cabel unpluged");
+    eth_present = true;
+    Serial.println("Ethernet OK. No Link! Cabel unpluged?");
+  }
+  if(link == LinkON){
+    eth_present = true;
+    eth_connected = true;
   }
 
   if(eth_connected){// start the ethernet connection and the server:
@@ -267,6 +270,7 @@ void setup() {
     Serial.println(WiFi.localIP());
     Serial.println(WiFi.RSSI());
     Serial.println(WiFi.macAddress());
+    Serial.println(WiFi.SSID());
 
 
     server.on("/serverIndex", HTTP_GET, []() {
@@ -578,4 +582,32 @@ const char * getSerialCS(){
   deserializeJson(queryJSON, BTsendBufer);
   const char* a= queryJSON["Response"];
   return a;
+}
+
+void prepareBaseData(){
+  StaticJsonDocument<300> answerJSON;
+answerJSON["Model"] = (String)getModel();
+answerJSON["Version"] = (String)getSerialCS();
+answerJSON["Ethernet"] = (eth_present)?1:0;
+answerJSON["ESPVersion"] = sw_version;
+// answerJSON["WiFi"] = WiFi.SSID();
+//@todo Sim present
+//wifi sate
+//clockmechanics
+serializeJson(answerJSON, BTsendBufer, 300);
+
+}
+
+void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
+  if(event == ESP_SPP_SRV_OPEN_EVT){
+    BTClientConnected = true;
+    Serial.println("Client Connected to Bluetooth");
+    prepareBaseData();
+    BTSerial.println(BTsendBufer);
+    Serial.println(BTsendBufer);
+  }
+  if(event == ESP_SPP_SRV_STOP_EVT){
+    BTClientConnected = false;
+    Serial.println("Client Disconnected from Bluetooth");
+  }
 }
