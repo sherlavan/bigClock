@@ -311,12 +311,12 @@ static const unsigned char ReadWarrantyCMD[] = {1, 0x15, 9};
 
 // КОМАНДА ЗАПИСИ СЕРИЙНОГО НОМЕРА
 // Запись: 0x10 ADR CMD – 0х16
-// Строка серийного номера в формате Rцццц: цццц – коды цифр от ‘0’ до ‘9’.
-// CS 0x10 0xFE.
+// Строка серийного номера в формате Rцццц: цццц – коды цифр от ‘0’ до ‘9’.  
+// CS 0x10 0xFE.                        5 байт + 1 для 0 string terminate
 // Ответ: 0x10 ADR CS 0x10 0xFE
 // ADR – адрес ЧС;
 // CS = 0x55^ADR.
-static const unsigned char WriteSerialNCMD[] = {6, 0x16, 5};
+static const unsigned char WriteSerialNCMD[] = {7, 0x16, 5};
 
 
 // КОМАНДА ЗАПИСИ НОМЕРА ЧАСОВОЙ СИСТЕМЫ
@@ -326,7 +326,7 @@ static const unsigned char WriteSerialNCMD[] = {6, 0x16, 5};
 // Ответ: 0x10 ADR CS 0x10 0xFE
 // ADR – адрес ЧС;
 // CS = 0x55^ADR.
-static const unsigned char WriteCSNCMD[] = {7, 0x17, 5};
+static const unsigned char WriteCSNCMD[] = {8, 0x17, 5};
 
 
 // КОМАНДА ЗАПИСИ ВРЕМЕНИ ДО ТО И ГАРАНТИИ

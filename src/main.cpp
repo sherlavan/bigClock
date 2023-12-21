@@ -175,8 +175,11 @@ void printoutData()
 }
 void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 void handleBTRequest();
+const char * executeCommand(serialPins UARTDev, const unsigned char* command);
 const char * getModel();
 const char * getSerialCS();
+const char * getVersionCS();
+const char * getCSSystem();
 
 
 //################################ setup block   #####################################################
@@ -186,6 +189,7 @@ void setup() {
   digitalWrite(ETH_RST_PIN,0);
   delay(1);
   pinMode(ETH_RST_PIN,INPUT);
+
 
   Serial.begin(115200); 
   Serial.println("Starting Setup stage");
@@ -201,7 +205,7 @@ void setup() {
   ///===================================init eth with reset
   Serial.println("Reseting Ethernet module, wait 3sec.");
   
-  delay(5000);
+  delay(3000);
   Serial.println("Try to init Ethernet module");
   Ethernet.init (ETH_CS);
   EthernetLinkStatus link = Ethernet.linkStatus();
@@ -508,7 +512,7 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
 
     if (answerUART[0]==0x10) {
       char chank[answerLen-5];
-      memcpy(chank, answerUART + 3, answerLen-5);
+      memcpy(chank, answerUART + 2, answerLen-5);
       chank[answerLen-6] = 0;//0 terminate
       Serial.println(chank);
       StaticJsonDocument<300> answerJSON;
@@ -584,12 +588,37 @@ const char * getSerialCS(){
   return a;
 }
 
+const char * getVersionCS(){
+  queryModule(clockStation, ReadVersionCMD, BTsendBufer);
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
+}
+
+const char * getCSSystem(){
+  queryModule(clockStation, ReadCSNCMD, BTsendBufer);
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
+}
+const char * executeCommand(serialPins UARTDev, const unsigned char* command){
+  queryModule(UARTDev, command, BTsendBufer);
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
+}
+
 void prepareBaseData(){
   StaticJsonDocument<300> answerJSON;
 answerJSON["Model"] = (String)getModel();
-answerJSON["Version"] = (String)getSerialCS();
+answerJSON["CSSerial"] = (String)getSerialCS();
+answerJSON["CSVersion"] = (String)getVersionCS();
 answerJSON["Ethernet"] = (eth_present)?1:0;
 answerJSON["ESPVersion"] = sw_version;
+answerJSON["CSSystem"] = (String)executeCommand(clockStation, ReadCSNCMD);
 // answerJSON["WiFi"] = WiFi.SSID();
 //@todo Sim present
 //wifi sate
