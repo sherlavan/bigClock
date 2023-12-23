@@ -20,7 +20,7 @@ unsigned char * buildCMD(const unsigned char *cmd, const unsigned char *startOfC
 
 
     
-    unsigned char * fullcmd = (unsigned char *) malloc(sclen + cmdLen + parametrsLenCorrection + endCL + 1);//1 - Байт для контрольной суммы
+    unsigned char * fullcmd = (unsigned char *) malloc(sclen + cmdLen + parametrsLenCorrection + endCL + 1 + 1);//1 - Байт для контрольной суммы, 1 - если кс 0х10
     unsigned char controlSumm = 0x55;
     
     controlSumm^=startOfCommand[1];
@@ -49,6 +49,10 @@ unsigned char * buildCMD(const unsigned char *cmd, const unsigned char *startOfC
     
     fullcmd[i+j+1] = controlSumm;
     j++;
+    if(controlSumm == 0x10){
+        fullcmd[i+j+1] = controlSumm;
+        j++;
+    }
     uint8_t k = 0;
     for(; k < endCL;k++){
         fullcmd[i+j+k+1] = endC[k];

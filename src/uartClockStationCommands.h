@@ -442,8 +442,8 @@ static const unsigned char MelodyTestCMD[] = {1, 0x20, 5};
 uint8_t calculateLenOfParams(const unsigned char * params, const uint8_t cmdLen);
 
 
-//переменная хранит параметры запроса, 0й элемент должна быть длина массива
-static unsigned char ParametrsCMD[10]={0};
+//переменная хранит параметры запроса
+static unsigned char ParametrsCMD[20]={0};
 
 
 //Фунция сборки полной комманды с подсчётом контрольной суммы
