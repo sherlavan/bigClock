@@ -160,7 +160,7 @@ const char* UpdatePage =
 
 
 //#####################################  Function block   ################################################### 
-void queryModule(serialPins UARTDev,const unsigned char* command, char * OutputStream);
+void queryModule(serialPins UARTDev,const unsigned char* command, char * OutputStream, String txtCommand, String txtDevice);
 void prepareBaseData();
 void printoutData()
 {
@@ -178,8 +178,6 @@ void handleBTRequest();
 const char * executeCommand(serialPins UARTDev, const unsigned char* command);
 const char * getModel();
 const char * getSerialCS();
-const char * getVersionCS();
-const char * getCSSystem();
 
 
 //################################ setup block   #####################################################
@@ -453,7 +451,7 @@ void loop() {
 }
 // Functions block   vvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * OutputStream){
+void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * OutputStream, String txtCommand, String txtDevice){
     bool csUartTimeOut;
     // prepeare command
     unsigned char *  command = buildCMD(sendCommand, StartCMD, ParametrsCMD);
@@ -472,7 +470,7 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
         commandToSend[i]=command[i+1];
     }
     //--prepeare
-    Serial.println( "cmd to clock  from func");
+    Serial.println( "cmd to device from func");
     Serial.println(hexStr(commandToSend, commandLen - 2).c_str());
 
 
@@ -503,7 +501,7 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
       Serial1.readBytesUntil(0xfe, answerUART, answerLen);
     }
     responseTime = millis() - responseTime;
-
+    answerUART[answerLen]=0xfe;
     //release UART
     Serial1.end();
     Serial.println("Answer from func");
@@ -516,9 +514,17 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
       chank[answerLen-6] = 0;//0 terminate
       Serial.println(chank);
       StaticJsonDocument<300> answerJSON;
-      answerJSON["Response"] = chank;
+      answerJSON["Response"] = (command[commandLen-1] == 0)?chank:"Ok";
+
+      answerJSON.createNestedArray("Params");
+      for(int i=0;i<answerLen-5;i++){
+          answerJSON["Params"].add(answerUART[i+2]);
+      }
+
       answerJSON["Time"] = responseTime;
       answerJSON["TimeOut"] = (csUartTimeOut)?1:0;
+      answerJSON["Command"] = txtCommand;
+      answerJSON["Device"] = txtDevice;
       serializeJson(answerJSON, OutputStream, 300);
       free(answerUART);
       return;
@@ -527,11 +533,11 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
     
     StaticJsonDocument<200> answerJSON;
     answerJSON["Error"] = "UART answer is unknown!";
-    answerJSON["Device"] = "DeviceVar here";
-    answerJSON["Command"] = "CommandVar here";
+      answerJSON["Command"] = txtCommand;
+      answerJSON["Device"] = txtDevice;
     answerJSON.createNestedArray("Params");
     for(int i=0;i<ParametrsCMD[0];i++){
-      answerJSON["Params"].add(ParametrsCMD[i+1]);
+      answerJSON["Params"].add(ParametrsCMD[i]);
     }
     answerJSON["Response"] = hexStr(answerUART, answerLen).c_str();
     answerJSON["UARTCSTimeOut"] = (csUartTimeOut)?1:0;
@@ -556,13 +562,13 @@ void handleBTRequest(){
     const unsigned char* sCommand = commandsToClockStationArray[com];
 
     if (sCommand[2]>1){//переданы параметры
-        int nParams = sCommand[2]-1; //Колическво параметров
+        int nParams = sCommand[2]; //Колическво параметров
         for(int i=0;i<nParams;i++){
             ParametrsCMD[i]=queryJSON["Params"][i];///Caution, no check!!!!!!!!!!!!!!!!1
         }
     }
     
-    queryModule(UDEV, sCommand, BTsendBufer);
+    queryModule(UDEV, sCommand, BTsendBufer, (String)com, (String)dev);
     BTSerial.println(BTsendBufer);
     Serial.println(BTsendBufer);
     BTreciveBufer = "";
@@ -571,40 +577,8 @@ void handleBTRequest(){
 }
 
 
-const char * getModel(){
-
-  queryModule(clockStation, ReadModelCMD, BTsendBufer);
-  StaticJsonDocument<300> queryJSON;
-  deserializeJson(queryJSON, BTsendBufer);
-  const char* a= queryJSON["Response"];
-  return a;
-}
-
-const char * getSerialCS(){
-  queryModule(clockStation, ReadSerialNCMD, BTsendBufer);
-  StaticJsonDocument<300> queryJSON;
-  deserializeJson(queryJSON, BTsendBufer);
-  const char* a= queryJSON["Response"];
-  return a;
-}
-
-const char * getVersionCS(){
-  queryModule(clockStation, ReadVersionCMD, BTsendBufer);
-  StaticJsonDocument<300> queryJSON;
-  deserializeJson(queryJSON, BTsendBufer);
-  const char* a= queryJSON["Response"];
-  return a;
-}
-
-const char * getCSSystem(){
-  queryModule(clockStation, ReadCSNCMD, BTsendBufer);
-  StaticJsonDocument<300> queryJSON;
-  deserializeJson(queryJSON, BTsendBufer);
-  const char* a= queryJSON["Response"];
-  return a;
-}
 const char * executeCommand(serialPins UARTDev, const unsigned char* command){
-  queryModule(UARTDev, command, BTsendBufer);
+  queryModule(UARTDev, command, BTsendBufer,"","");
   StaticJsonDocument<300> queryJSON;
   deserializeJson(queryJSON, BTsendBufer);
   const char* a= queryJSON["Response"];
@@ -613,9 +587,9 @@ const char * executeCommand(serialPins UARTDev, const unsigned char* command){
 
 void prepareBaseData(){
   StaticJsonDocument<300> answerJSON;
-answerJSON["Model"] = (String)getModel();
-answerJSON["CSSerial"] = (String)getSerialCS();
-answerJSON["CSVersion"] = (String)getVersionCS();
+answerJSON["Model"] = (String)executeCommand(clockStation, ReadModelCMD);
+answerJSON["CSSerial"] = (String)executeCommand(clockStation, ReadSerialNCMD);
+answerJSON["CSVersion"] = (String)executeCommand(clockStation, ReadVersionCMD);
 answerJSON["Ethernet"] = (eth_present)?1:0;
 answerJSON["ESPVersion"] = sw_version;
 answerJSON["CSSystem"] = (String)executeCommand(clockStation, ReadCSNCMD);
@@ -625,6 +599,23 @@ answerJSON["CSSystem"] = (String)executeCommand(clockStation, ReadCSNCMD);
 //clockmechanics
 serializeJson(answerJSON, BTsendBufer, 300);
 
+}
+
+const char * getModel(){
+
+  queryModule(clockStation, ReadModelCMD, BTsendBufer,"","");
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
+}
+
+const char * getSerialCS(){
+  queryModule(clockStation, ReadSerialNCMD, BTsendBufer,"","");
+  StaticJsonDocument<300> queryJSON;
+  deserializeJson(queryJSON, BTsendBufer);
+  const char* a= queryJSON["Response"];
+  return a;
 }
 
 void BTCheckClientConnection(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
