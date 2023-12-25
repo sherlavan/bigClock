@@ -83,13 +83,13 @@ std::map<std::string, const unsigned char* > commandsToClockStationArray = {
     {"WriteReley", WriteReleyCMD},
     {"WriteAstronomicReley", WriteAstronomicReleyCMD},
     {"WriteCoordinates", WriteCoordinatesCMD},
-    {"ReadModel", ReadModelCMD},
-    {"ReadVersion", ReadVersionCMD},
-    {"ReadSerialN", ReadSerialNCMD},
-    {"ReadCSN", ReadCSNCMD},
+    {"ReadModel", ReadModelCMD},                      //+++++
+    {"ReadVersion", ReadVersionCMD},                  //+++++
+    {"ReadSerialN", ReadSerialNCMD},                  //+++++
+    {"ReadCSN", ReadCSNCMD},                          //+++++
     {"ReadWarranty", ReadWarrantyCMD},
-    {"WriteSerialN", WriteSerialNCMD},
-    {"WriteCSN", WriteCSNCMD},
+    {"WriteSerialN", WriteSerialNCMD},                //+++++
+    {"WriteCSN", WriteCSNCMD},                        //+++++
     {"WriteWarranty", WriteWarrantyCMD},
     {"ReadDemo", ReadDemoCMD},
     {"WriteDemo", WriteDemoCMD},
@@ -508,42 +508,34 @@ void queryModule(serialPins UARTDev,const unsigned char* sendCommand, char * Out
     Serial.println(hexStr(answerUART, answerLen).c_str());
     //if timeout return info
 
+    StaticJsonDocument<300> answerJSON;
+    answerJSON["Time"] = responseTime;
+    answerJSON["TimeOut"] = (csUartTimeOut)?1:0;
+    answerJSON["Command"] = txtCommand;
+    answerJSON["Device"] = txtDevice;
+    answerJSON.createNestedArray("Params");
     if (answerUART[0]==0x10) {
       char chank[answerLen-5];
       memcpy(chank, answerUART + 2, answerLen-5);
       chank[answerLen-6] = 0;//0 terminate
       Serial.println(chank);
-      StaticJsonDocument<300> answerJSON;
       answerJSON["Response"] = (command[commandLen-1] == 0)?chank:"Ok";
-
-      answerJSON.createNestedArray("Params");
+      
       for(int i=0;i<answerLen-5;i++){
           answerJSON["Params"].add(answerUART[i+2]);
       }
-
-      answerJSON["Time"] = responseTime;
-      answerJSON["TimeOut"] = (csUartTimeOut)?1:0;
-      answerJSON["Command"] = txtCommand;
-      answerJSON["Device"] = txtDevice;
       serializeJson(answerJSON, OutputStream, 300);
       free(answerUART);
       return;
     }
 
-    
-    StaticJsonDocument<200> answerJSON;
     answerJSON["Error"] = "UART answer is unknown!";
-      answerJSON["Command"] = txtCommand;
-      answerJSON["Device"] = txtDevice;
-    answerJSON.createNestedArray("Params");
     for(int i=0;i<ParametrsCMD[0];i++){
       answerJSON["Params"].add(ParametrsCMD[i]);
     }
     answerJSON["Response"] = hexStr(answerUART, answerLen).c_str();
-    answerJSON["UARTCSTimeOut"] = (csUartTimeOut)?1:0;
     free(answerUART);
-
-    serializeJson(answerJSON, OutputStream, 200);
+    serializeJson(answerJSON, OutputStream, 300);
     return;
 
 }
@@ -560,9 +552,14 @@ void handleBTRequest(){
 
     const serialPins UDEV = *TDEV;
     const unsigned char* sCommand = commandsToClockStationArray[com];
+    u8_t paramsLen = queryJSON["Params"].size();
+    Serial.print("size of incoming list is: ");
+    Serial.println(paramsLen);
+    Serial.print("Size of expected list is: ");
+    Serial.println(sCommand[0] - 1);
 
-    if (sCommand[2]>1){//переданы параметры
-        int nParams = sCommand[2]; //Колическво параметров
+    if (sCommand[0]>1){//переданы параметры
+        int nParams = sCommand[0] - 1; //Колическво параметров
         for(int i=0;i<nParams;i++){
             ParametrsCMD[i]=queryJSON["Params"][i];///Caution, no check!!!!!!!!!!!!!!!!1
         }
