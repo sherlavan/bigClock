@@ -87,10 +87,10 @@ std::map<std::string, const unsigned char* > commandsToClockStationArray = {
     {"ReadVersion", ReadVersionCMD},                  //+++++
     {"ReadSerialN", ReadSerialNCMD},                  //+++++
     {"ReadCSN", ReadCSNCMD},                          //+++++
-    {"ReadWarranty", ReadWarrantyCMD},
+    {"ReadWarranty", ReadWarrantyCMD},                //+++++
     {"WriteSerialN", WriteSerialNCMD},                //+++++
     {"WriteCSN", WriteCSNCMD},                        //+++++
-    {"WriteWarranty", WriteWarrantyCMD},
+    {"WriteWarranty", WriteWarrantyCMD},              //+++++
     {"ReadDemo", ReadDemoCMD},
     {"WriteDemo", WriteDemoCMD},
     {"ReadChimes", ReadChimesCMD},
@@ -193,7 +193,16 @@ void setup() {
   Serial.println("Starting Setup stage");
   //======================bluetooth
   const char * csmodel = getModel();
-  String btname = csmodel;
+  String btname;
+  Serial.println(csmodel);
+  if(csmodel){
+    btname = csmodel;
+  }
+  else
+  {
+    btname = "ЧС БК GPS";
+  }
+  
   const char * csserial = getSerialCS();
   btname += " - ";
   btname += csserial;
